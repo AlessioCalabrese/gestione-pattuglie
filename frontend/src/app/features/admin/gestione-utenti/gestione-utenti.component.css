@@ -1,0 +1,83 @@
+h1 {
+  color: #0a1f44;
+  margin-bottom: 1.5rem;
+}
+
+.form-nuovo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  background: #fff;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.form-nuovo input, .form-nuovo select {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.form-nuovo button {
+  background: #c9a227;
+  color: #0a1f44;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.messaggio {
+  background: #eef3ff;
+  padding: 0.6rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+th, td {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+th {
+  background: #0a1f44;
+  color: #fff;
+}
+
+.badge-attivo {
+  color: #2e7d32;
+  font-weight: bold;
+}
+
+.badge-bloccato {
+  color: #b00020;
+  font-weight: bold;
+}
+
+button {
+  margin-right: 0.4rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid #0a1f44;
+  background: #fff;
+  color: #0a1f44;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-elimina {
+  border-color: #b00020;
+  color: #b00020;
+}

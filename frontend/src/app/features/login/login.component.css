@@ -1,0 +1,89 @@
+.login-container {
+  max-width: 380px;
+  margin: 12vh auto;
+  padding: 2rem;
+  border-radius: var(--raggio-bordo);
+  background: var(--colore-bianco);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  text-align: center;
+}
+
+h1 {
+  color: var(--colore-navy);
+  font-size: 1.4rem;
+  margin-bottom: 1.5rem;
+}
+
+.selettore-modalita {
+  display: flex;
+  margin-bottom: 1.5rem;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--colore-navy);
+}
+
+.selettore-modalita button {
+  flex: 1;
+  padding: 0.6rem;
+  border: none;
+  background: var(--colore-bianco);
+  color: var(--colore-navy);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.selettore-modalita button.attivo {
+  background: var(--colore-navy);
+  color: var(--colore-bianco);
+  font-weight: bold;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+input {
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+button[type="submit"], .area-nfc button {
+  padding: 0.75rem;
+  background: var(--colore-oro);
+  color: var(--colore-navy);
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.area-nfc {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+}
+
+.area-nfc p {
+  color: var(--colore-testo-secondario);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.avviso {
+  color: var(--colore-errore);
+}
+
+.errore {
+  color: var(--colore-errore);
+  margin-top: 1rem;
+}

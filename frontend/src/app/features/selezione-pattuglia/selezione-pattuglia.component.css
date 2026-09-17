@@ -1,0 +1,46 @@
+.container {
+  max-width: 720px;
+  margin: 2rem auto;
+  padding: 1rem;
+}
+
+h1 {
+  color: #0a1f44;
+  margin-bottom: 1.5rem;
+}
+
+.lista-pattuglie {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.card-pattuglia {
+  background: #fff;
+  border-left: 4px solid #c9a227;
+  border-radius: 6px;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.card-pattuglia:hover {
+  transform: translateY(-2px);
+}
+
+.card-pattuglia h2 {
+  color: #0a1f44;
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.targa {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  background: #0a1f44;
+  color: #fff;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}

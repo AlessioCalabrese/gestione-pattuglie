@@ -1,0 +1,142 @@
+h1 {
+  color: #0a1f44;
+  margin-bottom: 0.75rem;
+}
+
+.hint-top {
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 1.25rem;
+}
+
+.form-nuovo, .form-obiettivo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  background: #fff;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.form-nuovo input, .form-obiettivo input, .form-nuovo select {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.form-nuovo button, .form-obiettivo button {
+  background: #c9a227;
+  color: #0a1f44;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.messaggio {
+  background: #eef3ff;
+  padding: 0.6rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.lista-pattuglie {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.card-pattuglia {
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.intestazione {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  cursor: pointer;
+}
+
+.intestazione h2 {
+  color: #0a1f44;
+  margin: 0 0 0.2rem;
+  font-size: 1.1rem;
+}
+
+.intestazione p {
+  margin: 0;
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.badge-attivo {
+  color: #2e7d32;
+  font-weight: bold;
+}
+
+.badge-bloccato {
+  color: #b00020;
+  font-weight: bold;
+}
+
+.pannello {
+  padding: 0 1rem 1rem;
+  border-top: 1px solid #eee;
+}
+
+.pannello button {
+  margin: 0.75rem 0;
+  padding: 0.5rem 1rem;
+  border: 1px solid #0a1f44;
+  background: #fff;
+  color: #0a1f44;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: #888;
+  font-style: italic;
+}
+
+.stato-geocodifica {
+  font-size: 0.85rem;
+  margin: 0.3rem 0 0.8rem;
+}
+
+.stato-geocodifica.ok {
+  color: #2e7d32;
+}
+
+.stato-geocodifica.errore {
+  color: #b00020;
+}
+
+.coordinate-manuali {
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.coordinate-manuali summary {
+  cursor: pointer;
+  margin-bottom: 0.5rem;
+}
+
+.riga-coordinate {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.riga-coordinate input {
+  padding: 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
