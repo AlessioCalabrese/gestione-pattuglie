@@ -1,0 +1,8 @@
+{
+  "_comment": "Usato solo in sviluppo con 'ng serve --proxy-config proxy.conf.json': inoltra le chiamate /api al backend Spring Boot avviato separatamente su localhost:8080. Non serve quando l'app gira come progetto unico (jar Spring Boot che include già il frontend compilato).",
+  "/api": {
+    "target": "http://localhost:8080",
+    "secure": false,
+    "changeOrigin": true
+  }
+}
