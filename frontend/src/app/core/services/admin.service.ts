@@ -25,17 +25,24 @@ export interface Pattuglia {
   id: number;
   nome: string;
   descrizione: string;
-  veicoloTarga: string;
   attiva: boolean;
-  consumoMedioL100Km: number;
   tipoCarburante: 'BENZINA' | 'GASOLIO';
 }
 
+export type GiornoSettimana = 'LUNEDI' | 'MARTEDI' | 'MERCOLEDI' | 'GIOVEDI' | 'VENERDI' | 'SABATO' | 'DOMENICA';
+
 export interface NuovoObiettivo {
   nome: string;
-  indirizzo: string;
+  via: string;
+  numeroCivico: string;
+  comune: string;
   latitudine: number;
   longitudine: number;
+  priorita: boolean;
+  giorniAttivi: GiornoSettimana[];   // vuoto = tutti i giorni
+  oraInizio: string | null;          // formato "HH:mm", null = nessun vincolo
+  oraFine: string | null;
+  ripetizioniGiornaliere: number;
 }
 
 export interface GeocodificaResult {
@@ -74,14 +81,9 @@ export class AdminService {
   }
 
   creaPattuglia(
-    nome: string, descrizione: string, veicoloTarga: string,
-    consumoMedioL100Km?: number, tipoCarburante?: 'BENZINA' | 'GASOLIO'
+    nome: string, descrizione: string, tipoCarburante?: 'BENZINA' | 'GASOLIO'
   ): Observable<Pattuglia> {
-    return this.http.post<Pattuglia>('/api/admin/pattuglie', {
-      nome, descrizione, veicoloTarga,
-      consumoMedioL100Km: consumoMedioL100Km != null ? String(consumoMedioL100Km) : undefined,
-      tipoCarburante
-    });
+    return this.http.post<Pattuglia>('/api/admin/pattuglie', { nome, descrizione, tipoCarburante });
   }
 
   impostaStatoPattuglia(id: number, attiva: boolean): Observable<Pattuglia> {

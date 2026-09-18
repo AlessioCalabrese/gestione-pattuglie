@@ -9,6 +9,26 @@ h1 {
   margin-bottom: 1.5rem;
 }
 
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header h1 {
+  margin-bottom: 0;
+}
+
+.btn-esci {
+  background: #fff;
+  color: #b00020;
+  border: 1px solid #b00020;
+  padding: 0.6rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  height: fit-content;
+}
+
 .lista-pattuglie {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));

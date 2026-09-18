@@ -6,7 +6,6 @@ export interface Pattuglia {
   id: number;
   nome: string;
   descrizione: string;
-  veicoloTarga: string;
   attiva: boolean;
 }
 
@@ -14,13 +13,24 @@ export interface Obiettivo {
   id: number;
   pattugliaId: number;
   nome: string;
+  via: string;
+  numeroCivico: string;
+  comune: string;
   indirizzo: string;
   latitudine: number;
   longitudine: number;
   ordineVisita: number | null;
   attivo: boolean;
+  priorita: boolean;
+  giorniAttivi: string[];
+  oraInizio: string | null;
+  oraFine: string | null;
+  ripetizioniGiornaliere: number;
   flaggatoOggi: boolean | null;
   ultimoFlagDataOra: string | null;
+  numeroFlagOggi: number;
+  completatoOggi: boolean;
+  inServizioOra: boolean;
 }
 
 export interface FlagRequest {
@@ -33,6 +43,7 @@ export interface FlagRequest {
 
 export interface RisultatoOttimizzazione {
   obiettivi: Obiettivo[];
+  obiettiviInServizioOggi: number;
   distanzaOriginaleKm: number;
   distanzaOttimizzataKm: number;
   risparmioKm: number;

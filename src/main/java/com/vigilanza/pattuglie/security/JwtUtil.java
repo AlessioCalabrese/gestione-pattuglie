@@ -14,10 +14,10 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret}")
+    @Value("${app.security.jwt-secret}")
     private String secretConfigurato;
 
-    @Value("${jwt.expiration-ms:28800000}") // default 8 ore
+    @Value("${app.security.jwt-expiration-minutes:28800000}") // default 8 ore
     private long scadenzaMs;
 
     // Blacklist in-memory dei token invalidati al logout.

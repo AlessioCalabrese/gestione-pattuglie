@@ -2,7 +2,12 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, debounceTime, distinctUntilChanged, switchMap, of, catchError } from 'rxjs';
-import { AdminService, Pattuglia, NuovoObiettivo } from '../../../core/services/admin.service';
+import { AdminService, Pattuglia, NuovoObiettivo, GiornoSettimana } from '../../../core/services/admin.service';
+
+interface GiornoOpzione {
+  valore: GiornoSettimana;
+  etichetta: string;
+}
 
 @Component({
   selector: 'app-gestione-pattuglie',
@@ -14,18 +19,16 @@ import { AdminService, Pattuglia, NuovoObiettivo } from '../../../core/services/
     <p class="hint hint-top">
       Il prezzo del carburante usato per stimare il risparmio nell'ottimizzazione rotta è
       recuperato automaticamente dal dataset ufficiale del Ministero delle Imprese e del Made
-      in Italy (MIMIT), aggiornato quotidianamente — nessuna configurazione manuale necessaria.
+      in Italy (MIMIT), aggiornato ogni notte — nessuna configurazione manuale necessaria.
     </p>
 
     <form class="form-nuovo" (ngSubmit)="creaPattuglia()">
       <input type="text" [(ngModel)]="nuovaPattuglia.nome" name="nome" placeholder="Nome pattuglia" required />
       <input type="text" [(ngModel)]="nuovaPattuglia.descrizione" name="descrizione" placeholder="Descrizione" />
-      <input type="text" [(ngModel)]="nuovaPattuglia.veicoloTarga" name="veicoloTarga" placeholder="Targa veicolo" />
       <select [(ngModel)]="nuovaPattuglia.tipoCarburante" name="tipoCarburante">
         <option value="BENZINA">Benzina</option>
         <option value="GASOLIO">Gasolio</option>
       </select>
-      <input type="number" step="0.1" [(ngModel)]="nuovaPattuglia.consumoMedioL100Km" name="consumoMedioL100Km" placeholder="Consumo medio (L/100km)" />
       <button type="submit">Crea pattuglia</button>
     </form>
 
@@ -36,7 +39,7 @@ import { AdminService, Pattuglia, NuovoObiettivo } from '../../../core/services/
         <div class="intestazione" (click)="toggleEspansa(p.id)">
           <div>
             <h2>{{ p.nome }}</h2>
-            <p>{{ p.descrizione }} — {{ p.veicoloTarga }} — {{ p.tipoCarburante }} — {{ p.consumoMedioL100Km }} L/100km</p>
+            <p>{{ p.descrizione }} — {{ p.tipoCarburante }}</p>
           </div>
           <span [class.badge-attivo]="p.attiva" [class.badge-bloccato]="!p.attiva">
             {{ p.attiva ? 'Attiva' : 'Disattivata' }}
@@ -51,15 +54,60 @@ import { AdminService, Pattuglia, NuovoObiettivo } from '../../../core/services/
           <h3>Aggiungi obiettivo</h3>
           <form class="form-obiettivo" (ngSubmit)="creaObiettivo(p.id)">
             <input type="text" [(ngModel)]="nuovoObiettivo.nome" name="nomeObiettivo" placeholder="Nome obiettivo" required />
-            <input
-              type="text"
-              [(ngModel)]="nuovoObiettivo.indirizzo"
-              name="indirizzo"
-              placeholder="Indirizzo (es. Via Roma 10, Milano)"
-              (ngModelChange)="onIndirizzoCambiato($event)"
-              required
-            />
-            <button type="submit" [disabled]="!coordinateTrovate">Aggiungi obiettivo</button>
+
+            <div class="riga-indirizzo">
+              <input
+                type="text" class="campo-via"
+                [(ngModel)]="nuovoObiettivo.via" name="via"
+                placeholder="Via"
+                (ngModelChange)="onIndirizzoCambiato()"
+                required
+              />
+              <input
+                type="text" class="campo-civico"
+                [(ngModel)]="nuovoObiettivo.numeroCivico" name="numeroCivico"
+                placeholder="N."
+                (ngModelChange)="onIndirizzoCambiato()"
+                required
+              />
+              <input
+                type="text" class="campo-comune"
+                [(ngModel)]="nuovoObiettivo.comune" name="comune"
+                placeholder="Comune"
+                (ngModelChange)="onIndirizzoCambiato()"
+                required
+              />
+            </div>
+
+            <label class="checkbox-priorita">
+              <input type="checkbox" [(ngModel)]="nuovoObiettivo.priorita" name="priorita" />
+              Priorità alta (visitato per primo nel percorso ottimizzato)
+            </label>
+
+            <div class="blocco-pianificazione">
+              <p class="sottotitolo">Giorni di servizio (obbligatorio: seleziona almeno un giorno)</p>
+              <div class="giorni-settimana">
+                <label *ngFor="let g of giorniDisponibili" class="chip-giorno" [class.selezionato]="isGiornoSelezionato(g.valore)">
+                  <input type="checkbox" [checked]="isGiornoSelezionato(g.valore)" (change)="toggleGiorno(g.valore)" />
+                  {{ g.etichetta }}
+                </label>
+              </div>
+
+              <p class="sottotitolo">Fascia oraria di servizio (vuota = nessun vincolo)</p>
+              <div class="riga-orario">
+                <input type="time" [(ngModel)]="nuovoObiettivo.oraInizio" name="oraInizio" />
+                <span>—</span>
+                <input type="time" [(ngModel)]="nuovoObiettivo.oraFine" name="oraFine" />
+              </div>
+
+              <p class="sottotitolo">Ripetizioni richieste nella giornata/fascia</p>
+              <input type="number" min="1" [(ngModel)]="nuovoObiettivo.ripetizioniGiornaliere" name="ripetizioniGiornaliere" class="campo-ripetizioni" />
+            </div>
+
+            <button type="submit" [disabled]="!coordinateTrovate || nuovoObiettivo.giorniAttivi.length === 0">Aggiungi obiettivo</button>
+            <p class="avviso-validazione" *ngIf="coordinateTrovate && nuovoObiettivo.giorniAttivi.length === 0">
+              Seleziona almeno un giorno di servizio per poter salvare l'obiettivo.
+            </p>
           </form>
 
           <p class="stato-geocodifica" *ngIf="geocodificaInCorso">Ricerca indirizzo in corso…</p>
@@ -89,10 +137,21 @@ export class GestionePattuglieComponent implements OnInit {
   espansa: number | null = null;
   messaggio = '';
 
-  nuovaPattuglia: { nome: string; descrizione: string; veicoloTarga: string; consumoMedioL100Km: number; tipoCarburante: 'BENZINA' | 'GASOLIO' } = {
-    nome: '', descrizione: '', veicoloTarga: '', consumoMedioL100Km: 10, tipoCarburante: 'BENZINA'
+  nuovaPattuglia: { nome: string; descrizione: string; tipoCarburante: 'BENZINA' | 'GASOLIO' } = {
+    nome: '', descrizione: '', tipoCarburante: 'BENZINA'
   };
-  nuovoObiettivo: NuovoObiettivo = { nome: '', indirizzo: '', latitudine: 0, longitudine: 0 };
+
+  nuovoObiettivo: NuovoObiettivo = this.obiettivoVuoto();
+
+  giorniDisponibili: GiornoOpzione[] = [
+    { valore: 'LUNEDI', etichetta: 'Lun' },
+    { valore: 'MARTEDI', etichetta: 'Mar' },
+    { valore: 'MERCOLEDI', etichetta: 'Mer' },
+    { valore: 'GIOVEDI', etichetta: 'Gio' },
+    { valore: 'VENERDI', etichetta: 'Ven' },
+    { valore: 'SABATO', etichetta: 'Sab' },
+    { valore: 'DOMENICA', etichetta: 'Dom' },
+  ];
 
   geocodificaInCorso = false;
   coordinateTrovate = false;
@@ -105,14 +164,14 @@ export class GestionePattuglieComponent implements OnInit {
     this.indirizzoSubject.pipe(
       debounceTime(600),
       distinctUntilChanged(),
-      switchMap(indirizzo => {
-        if (!indirizzo || indirizzo.trim().length < 5) {
+      switchMap(indirizzoCompleto => {
+        if (!indirizzoCompleto || indirizzoCompleto.trim().length < 8) {
           this.coordinateTrovate = false;
           return of(null);
         }
         this.geocodificaInCorso = true;
         this.erroreGeocodifica = '';
-        return this.adminService.geocodifica(indirizzo).pipe(
+        return this.adminService.geocodifica(indirizzoCompleto).pipe(
           catchError(() => {
             this.erroreGeocodifica = 'Indirizzo non trovato.';
             this.coordinateTrovate = false;
@@ -135,10 +194,34 @@ export class GestionePattuglieComponent implements OnInit {
     this.carica();
   }
 
-  onIndirizzoCambiato(indirizzo: string): void {
+  private obiettivoVuoto(): NuovoObiettivo {
+    return {
+      nome: '', via: '', numeroCivico: '', comune: '',
+      latitudine: 0, longitudine: 0, priorita: false,
+      giorniAttivi: [], oraInizio: null, oraFine: null, ripetizioniGiornaliere: 1
+    };
+  }
+
+  onIndirizzoCambiato(): void {
     this.coordinateTrovate = false;
     this.erroreGeocodifica = '';
-    this.indirizzoSubject.next(indirizzo);
+    const { via, numeroCivico, comune } = this.nuovoObiettivo;
+    const indirizzoCompleto = [via, numeroCivico, comune].filter(v => v && v.trim()).join(' ');
+    this.indirizzoSubject.next(indirizzoCompleto);
+  }
+
+  isGiornoSelezionato(giorno: GiornoSettimana): boolean {
+    return this.nuovoObiettivo.giorniAttivi.includes(giorno);
+  }
+
+  toggleGiorno(giorno: GiornoSettimana): void {
+    const giorni = this.nuovoObiettivo.giorniAttivi;
+    const indice = giorni.indexOf(giorno);
+    if (indice >= 0) {
+      giorni.splice(indice, 1);
+    } else {
+      giorni.push(giorno);
+    }
   }
 
   carica(): void {
@@ -151,11 +234,11 @@ export class GestionePattuglieComponent implements OnInit {
 
   creaPattuglia(): void {
     this.messaggio = '';
-    const { nome, descrizione, veicoloTarga, consumoMedioL100Km, tipoCarburante } = this.nuovaPattuglia;
-    this.adminService.creaPattuglia(nome, descrizione, veicoloTarga, consumoMedioL100Km, tipoCarburante).subscribe({
+    const { nome, descrizione, tipoCarburante } = this.nuovaPattuglia;
+    this.adminService.creaPattuglia(nome, descrizione, tipoCarburante).subscribe({
       next: () => {
         this.messaggio = 'Pattuglia creata con successo.';
-        this.nuovaPattuglia = { nome: '', descrizione: '', veicoloTarga: '', consumoMedioL100Km: 10, tipoCarburante: 'BENZINA' };
+        this.nuovaPattuglia = { nome: '', descrizione: '', tipoCarburante: 'BENZINA' };
         this.carica();
       },
       error: () => this.messaggio = 'Errore durante la creazione della pattuglia.'
@@ -171,7 +254,7 @@ export class GestionePattuglieComponent implements OnInit {
     this.adminService.creaObiettivo(pattugliaId, this.nuovoObiettivo).subscribe({
       next: () => {
         this.messaggio = 'Obiettivo aggiunto con successo.';
-        this.nuovoObiettivo = { nome: '', indirizzo: '', latitudine: 0, longitudine: 0 };
+        this.nuovoObiettivo = this.obiettivoVuoto();
         this.coordinateTrovate = false;
         this.indirizzoNormalizzato = '';
       },

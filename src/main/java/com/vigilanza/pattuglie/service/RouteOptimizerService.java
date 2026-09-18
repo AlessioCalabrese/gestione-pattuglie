@@ -31,20 +31,62 @@ public class RouteOptimizerService {
     /**
      * Restituisce gli obiettivi riordinati secondo il percorso ottimizzato,
      * a partire dal punto di partenza indicato (es. sede/posizione attuale pattuglia).
+     *
+     * Gli obiettivi con flag priorità attivo vengono sempre visitati per primi:
+     * si ottimizza prima il sotto-percorso dei soli obiettivi prioritari (a
+     * partire dal punto di partenza), poi si ottimizza il sotto-percorso dei
+     * restanti obiettivi non prioritari, facendolo però partire dall'ultimo
+     * punto prioritario visitato — così il vincolo "priorità prima" è
+     * rispettato senza sacrificare l'ottimizzazione complessiva del percorso:
+     * entrambi i tratti restano i più brevi possibile dati i rispettivi punti
+     * di partenza, ed è ottimo anche il punto di passaggio tra i due gruppi
+     * (è sempre l'obiettivo prioritario più vicino al gruppo non prioritario
+     * a chiudere il primo tratto, grazie al 2-opt applicato su ciascun tratto).
      */
     public List<Obiettivo> ottimizzaRotta(double latPartenza, double lngPartenza,
                                            List<Obiettivo> obiettivi) {
-        if (obiettivi == null || obiettivi.size() <= 1) {
-            return obiettivi == null ? new ArrayList<>() : new ArrayList<>(obiettivi);
+        if (obiettivi == null || obiettivi.isEmpty()) {
+            return new ArrayList<>();
         }
 
+        List<Obiettivo> prioritari = new ArrayList<>();
+        List<Obiettivo> normali = new ArrayList<>();
+        for (Obiettivo o : obiettivi) {
+            (o.isPriorita() ? prioritari : normali).add(o);
+        }
+
+        List<Obiettivo> rottaPrioritari = ottimizzaSottoPercorso(latPartenza, lngPartenza, prioritari);
+
+        // Il tratto successivo (obiettivi normali) parte dall'ultimo punto
+        // prioritario raggiunto; se non ci sono obiettivi prioritari, parte
+        // semplicemente dal punto di partenza originale.
+        double latSuccessiva = latPartenza;
+        double lngSuccessiva = lngPartenza;
+        if (!rottaPrioritari.isEmpty()) {
+            Obiettivo ultimo = rottaPrioritari.get(rottaPrioritari.size() - 1);
+            latSuccessiva = ultimo.getLatitudine().doubleValue();
+            lngSuccessiva = ultimo.getLongitudine().doubleValue();
+        }
+
+        List<Obiettivo> rottaNormali = ottimizzaSottoPercorso(latSuccessiva, lngSuccessiva, normali);
+
+        List<Obiettivo> rottaCompleta = new ArrayList<>(rottaPrioritari);
+        rottaCompleta.addAll(rottaNormali);
+
+        for (int i = 0; i < rottaCompleta.size(); i++) {
+            rottaCompleta.get(i).setOrdineVisita(i + 1);
+        }
+        return rottaCompleta;
+    }
+
+    /** Applica Nearest Neighbor + 2-opt a un sotto-insieme di obiettivi (può essere vuoto). */
+    private List<Obiettivo> ottimizzaSottoPercorso(double latPartenza, double lngPartenza,
+                                                    List<Obiettivo> obiettivi) {
+        if (obiettivi.size() <= 1) {
+            return new ArrayList<>(obiettivi);
+        }
         List<Obiettivo> rotta = nearestNeighbor(latPartenza, lngPartenza, obiettivi);
-        rotta = duePuntoOpt(latPartenza, lngPartenza, rotta);
-
-        for (int i = 0; i < rotta.size(); i++) {
-            rotta.get(i).setOrdineVisita(i + 1);
-        }
-        return rotta;
+        return duePuntoOpt(latPartenza, lngPartenza, rotta);
     }
 
     /** Calcola la lunghezza totale (km) di una rotta data, nell'ordine fornito. */

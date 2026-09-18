@@ -11,7 +11,6 @@ import com.vigilanza.pattuglie.service.UtenteService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -74,13 +73,10 @@ public class AdminController {
 
     @PostMapping("/pattuglie")
     public PattugliaDTO creaPattuglia(@RequestBody Map<String, String> body) {
-        String consumo = body.get("consumoMedioL100Km");
         String tipoCarburante = body.get("tipoCarburante");
         return pattugliaService.crea(
                 body.get("nome"),
                 body.get("descrizione"),
-                body.get("veicoloTarga"),
-                (consumo == null || consumo.isBlank()) ? null : new BigDecimal(consumo),
                 (tipoCarburante == null || tipoCarburante.isBlank())
                         ? null : com.vigilanza.pattuglie.entity.TipoCarburante.valueOf(tipoCarburante)
         );
@@ -101,14 +97,9 @@ public class AdminController {
     // ---- Obiettivi ----
 
     @PostMapping("/pattuglie/{pattugliaId}/obiettivi")
-    public ResponseEntity<?> creaObiettivo(@PathVariable Long pattugliaId, @RequestBody Map<String, String> body) {
-        var obiettivo = obiettivoService.crea(
-                pattugliaId,
-                body.get("nome"),
-                body.get("indirizzo"),
-                new BigDecimal(body.get("latitudine")),
-                new BigDecimal(body.get("longitudine"))
-        );
+    public ResponseEntity<?> creaObiettivo(@PathVariable Long pattugliaId,
+                                            @RequestBody com.vigilanza.pattuglie.dto.NuovoObiettivoRequest request) {
+        var obiettivo = obiettivoService.crea(pattugliaId, request);
         return ResponseEntity.ok(Map.of("id", obiettivo.getId()));
     }
 }

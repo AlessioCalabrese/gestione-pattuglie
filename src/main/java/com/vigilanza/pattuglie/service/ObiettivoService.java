@@ -1,6 +1,7 @@
 package com.vigilanza.pattuglie.service;
 
 import com.vigilanza.pattuglie.dto.FlagObiettivoRequest;
+import com.vigilanza.pattuglie.dto.NuovoObiettivoRequest;
 import com.vigilanza.pattuglie.dto.ObiettivoDTO;
 import com.vigilanza.pattuglie.dto.OttimizzazioneRottaResponse;
 import com.vigilanza.pattuglie.entity.*;
@@ -14,6 +15,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,14 +53,38 @@ public class ObiettivoService {
     public List<ObiettivoDTO> findByPattuglia(Long pattugliaId) {
         List<Obiettivo> obiettivi = obiettivoRepository
                 .findByPattugliaIdAndAttivoTrueOrderByOrdineVisitaAsc(pattugliaId);
-        return obiettivi.stream().map(this::toDtoConStatoFlag).toList();
+
+        GiornoSettimana oggi = GiornoSettimana.daDayOfWeek(LocalDate.now().getDayOfWeek());
+
+        // Un obiettivo è visibile alla pattuglia solo se il giorno odierno è tra
+        // quelli esplicitamente configurati. Un obiettivo senza alcun giorno
+        // impostato non è mai visibile (la pianificazione va sempre indicata).
+        return obiettivi.stream()
+                .filter(o -> o.getGiorniAttivi().contains(oggi))
+                .map(this::toDtoConStatoFlag)
+                .toList();
     }
 
-    public Obiettivo crea(Long pattugliaId, String nome, String indirizzo,
-                           java.math.BigDecimal lat, java.math.BigDecimal lng) {
+    public Obiettivo crea(Long pattugliaId, NuovoObiettivoRequest request) {
         Pattuglia pattuglia = pattugliaRepository.findById(pattugliaId)
                 .orElseThrow(() -> new IllegalArgumentException("Pattuglia non trovata"));
-        Obiettivo obiettivo = new Obiettivo(pattuglia, nome, indirizzo, lat, lng);
+
+        if (request.getGiorniAttivi() == null || request.getGiorniAttivi().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Seleziona almeno un giorno di servizio: un obiettivo senza giorni configurati non sarebbe mai visibile alle pattuglie.");
+        }
+
+        Obiettivo obiettivo = new Obiettivo(pattuglia, request.getNome(), request.getVia(),
+                request.getNumeroCivico(), request.getComune(), request.getLatitudine(), request.getLongitudine());
+        obiettivo.setPriorita(request.isPriorita());
+
+        obiettivo.setGiorniAttivi(new java.util.HashSet<>(request.getGiorniAttivi()));
+        obiettivo.setOraInizio(request.getOraInizio());
+        obiettivo.setOraFine(request.getOraFine());
+        if (request.getRipetizioniGiornaliere() != null && request.getRipetizioniGiornaliere() > 0) {
+            obiettivo.setRipetizioniGiornaliere(request.getRipetizioniGiornaliere());
+        }
+
         return obiettivoRepository.save(obiettivo);
     }
 
@@ -90,6 +116,15 @@ public class ObiettivoService {
     }
 
     /**
+     * Consumo medio generico usato per stimare litri/costo risparmiati, dato che
+     * il sistema non registra il consumo specifico del veicolo di ciascuna
+     * pattuglia. È una media indicativa per un veicolo di media cilindrata in
+     * uso urbano/extraurbano misto — se in futuro si vorrà una stima più
+     * precisa, andrà associato un consumo reale al singolo veicolo.
+     */
+    private static final BigDecimal CONSUMO_MEDIO_GENERICO_L_100KM = new BigDecimal("8.00");
+
+    /**
      * Calcola e salva l'ordine di visita ottimale degli obiettivi attivi
      * di una pattuglia, a partire dalla posizione corrente fornita
      * (es. rilevata dal tablet della pattuglia, o sede di partenza).
@@ -100,31 +135,67 @@ public class ObiettivoService {
         Pattuglia pattuglia = pattugliaRepository.findById(pattugliaId)
                 .orElseThrow(() -> new IllegalArgumentException("Pattuglia non trovata"));
 
-        List<Obiettivo> obiettiviOrdineAttuale = obiettivoRepository
+        List<Obiettivo> tuttiGliObiettiviAttivi = obiettivoRepository
                 .findByPattugliaIdAndAttivoTrueOrderByOrdineVisitaAsc(pattugliaId);
 
+        LocalDate oggi = LocalDate.now();
+        LocalTime adesso = LocalTime.now();
+        GiornoSettimana giornoOggi = GiornoSettimana.daDayOfWeek(oggi.getDayOfWeek());
+
+        // Un obiettivo è considerato "di oggi" solo se il giorno odierno è tra
+        // quelli esplicitamente configurati; senza alcun giorno impostato non
+        // compare mai (né in lista, né nel percorso).
+        List<Obiettivo> obiettiviDiOggi = tuttiGliObiettiviAttivi.stream()
+                .filter(o -> o.getGiorniAttivi().contains(giornoOggi))
+                .toList();
+
+        // Tra quelli di oggi, solo chi rientra anche nella fascia oraria pianificata
+        // entra nel calcolo del percorso; gli altri restano visibili ma marcati
+        // "fuori servizio" (es. il loro turno inizia più tardi nella stessa giornata).
+        List<Obiettivo> obiettiviInServizio = new ArrayList<>();
+        List<Obiettivo> obiettiviFuoriServizio = new ArrayList<>();
+        for (Obiettivo o : obiettiviDiOggi) {
+            (o.isInServizio(oggi, adesso) ? obiettiviInServizio : obiettiviFuoriServizio).add(o);
+        }
+
+        // Gli obiettivi esclusi non fanno parte del percorso odierno: azzeriamo
+        // il loro ordine di visita per non lasciare numeri residui di ottimizzazioni
+        // precedenti, che confonderebbero l'ordinamento della lista.
+        for (Obiettivo o : obiettiviFuoriServizio) {
+            o.setOrdineVisita(null);
+        }
+        if (!obiettiviFuoriServizio.isEmpty()) {
+            obiettivoRepository.saveAll(obiettiviFuoriServizio);
+        }
+
         // Copia dell'ordine attuale (prima dell'ottimizzazione), per il confronto.
-        List<Obiettivo> ordineOriginale = new ArrayList<>(obiettiviOrdineAttuale);
+        List<Obiettivo> ordineOriginale = new ArrayList<>(obiettiviInServizio);
         double distanzaOriginale = routeOptimizerService.calcolaLunghezzaKm(latPartenza, lngPartenza, ordineOriginale);
 
-        List<Obiettivo> ottimizzati = routeOptimizerService.ottimizzaRotta(latPartenza, lngPartenza, obiettiviOrdineAttuale);
+        List<Obiettivo> ottimizzati = routeOptimizerService.ottimizzaRotta(latPartenza, lngPartenza, obiettiviInServizio);
         obiettivoRepository.saveAll(ottimizzati);
         double distanzaOttimizzata = routeOptimizerService.calcolaLunghezzaKm(latPartenza, lngPartenza, ottimizzati);
 
-        BigDecimal consumoL100Km = pattuglia.getConsumoMedioL100Km() != null
-                ? pattuglia.getConsumoMedioL100Km() : new BigDecimal("10.00");
         BigDecimal prezzoAlLitro = fuelPriceService.getPrezzoAlLitro(pattuglia.getTipoCarburante());
 
-        BigDecimal litriOriginali = stimaLitri(distanzaOriginale, consumoL100Km);
-        BigDecimal litriOttimizzati = stimaLitri(distanzaOttimizzata, consumoL100Km);
+        BigDecimal litriOriginali = stimaLitri(distanzaOriginale, CONSUMO_MEDIO_GENERICO_L_100KM);
+        BigDecimal litriOttimizzati = stimaLitri(distanzaOttimizzata, CONSUMO_MEDIO_GENERICO_L_100KM);
         BigDecimal risparmioLitri = litriOriginali.subtract(litriOttimizzati).max(BigDecimal.ZERO);
         BigDecimal risparmioCosto = risparmioLitri.multiply(prezzoAlLitro).setScale(2, RoundingMode.HALF_UP);
 
         double risparmioKm = Math.max(0, distanzaOriginale - distanzaOttimizzata);
         double risparmioPercentuale = distanzaOriginale > 0 ? (risparmioKm / distanzaOriginale) * 100.0 : 0.0;
 
+        // La lista restituita mostra prima il percorso ottimizzato di oggi, poi
+        // gli obiettivi fuori pianificazione (senza ordine di visita, ma visibili
+        // e marcati "fuori servizio" per trasparenza verso la pattuglia).
+        List<ObiettivoDTO> obiettiviRisposta = new ArrayList<>();
+        obiettiviRisposta.addAll(ottimizzati.stream().map(this::toDtoConStatoFlag).toList());
+        obiettiviRisposta.addAll(obiettiviFuoriServizio.stream().map(this::toDtoConStatoFlag).toList());
+
         OttimizzazioneRottaResponse response = new OttimizzazioneRottaResponse();
-        response.setObiettivi(ottimizzati.stream().map(this::toDtoConStatoFlag).toList());
+        response.setObiettivi(obiettiviRisposta);
+        response.setObiettiviInServizioOggi(ottimizzati.size());
         response.setDistanzaOriginaleKm(arrotonda(distanzaOriginale));
         response.setDistanzaOttimizzataKm(arrotonda(distanzaOttimizzata));
         response.setRisparmioKm(arrotonda(risparmioKm));
@@ -149,8 +220,16 @@ public class ObiettivoService {
 
     private ObiettivoDTO toDtoConStatoFlag(Obiettivo o) {
         ObiettivoDTO dto = new ObiettivoDTO(o.getId(), o.getPattuglia().getId(), o.getNome(),
-                o.getIndirizzo(), o.getLatitudine(), o.getLongitudine(),
+                o.getVia(), o.getNumeroCivico(), o.getComune(), o.getLatitudine(), o.getLongitudine(),
                 o.getOrdineVisita(), o.isAttivo());
+        dto.setPriorita(o.isPriorita());
+        dto.setGiorniAttivi(o.getGiorniAttivi());
+        dto.setOraInizio(o.getOraInizio());
+        dto.setOraFine(o.getOraFine());
+        dto.setRipetizioniGiornaliere(o.getRipetizioniGiornaliere());
+
+        LocalDateTime adesso = LocalDateTime.now();
+        dto.setInServizioOra(o.isInServizio(adesso.toLocalDate(), adesso.toLocalTime()));
 
         LocalDateTime inizioGiorno = LocalDate.now().atStartOfDay();
         LocalDateTime fineGiorno = inizioGiorno.plusDays(1);
@@ -159,6 +238,8 @@ public class ObiettivoService {
                 .findByObiettivoIdAndDataOraBetween(o.getId(), inizioGiorno, fineGiorno);
 
         dto.setFlaggatoOggi(!flagOggi.isEmpty());
+        dto.setNumeroFlagOggi(flagOggi.size());
+        dto.setCompletatoOggi(flagOggi.size() >= o.getRipetizioniGiornaliere());
 
         Optional<ObiettivoFlag> ultimo = flagOggi.stream()
                 .max((a, b) -> a.getDataOra().compareTo(b.getDataOra()));

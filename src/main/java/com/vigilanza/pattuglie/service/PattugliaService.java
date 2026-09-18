@@ -26,13 +26,9 @@ public class PattugliaService {
         return pattugliaRepository.findSelezionabiliPerUtente(utenteId).stream().map(this::toDto).toList();
     }
 
-    public PattugliaDTO crea(String nome, String descrizione, String veicoloTarga,
-                              java.math.BigDecimal consumoMedioL100Km,
+    public PattugliaDTO crea(String nome, String descrizione,
                               com.vigilanza.pattuglie.entity.TipoCarburante tipoCarburante) {
-        Pattuglia pattuglia = new Pattuglia(nome, descrizione, veicoloTarga);
-        if (consumoMedioL100Km != null) {
-            pattuglia.setConsumoMedioL100Km(consumoMedioL100Km);
-        }
+        Pattuglia pattuglia = new Pattuglia(nome, descrizione);
         if (tipoCarburante != null) {
             pattuglia.setTipoCarburante(tipoCarburante);
         }
@@ -52,15 +48,20 @@ public class PattugliaService {
                 .map(this::toObiettivoDto)
                 .toList();
         PattugliaDTO dto = new PattugliaDTO(p.getId(), p.getNome(), p.getDescrizione(),
-                p.getVeicoloTarga(), p.isAttiva(), obiettivi);
-        dto.setConsumoMedioL100Km(p.getConsumoMedioL100Km());
+                p.isAttiva(), obiettivi);
         dto.setTipoCarburante(p.getTipoCarburante());
         return dto;
     }
 
     private ObiettivoDTO toObiettivoDto(Obiettivo o) {
-        return new ObiettivoDTO(o.getId(), o.getPattuglia().getId(), o.getNome(),
-                o.getIndirizzo(), o.getLatitudine(), o.getLongitudine(),
+        ObiettivoDTO dto = new ObiettivoDTO(o.getId(), o.getPattuglia().getId(), o.getNome(),
+                o.getVia(), o.getNumeroCivico(), o.getComune(), o.getLatitudine(), o.getLongitudine(),
                 o.getOrdineVisita(), o.isAttivo());
+        dto.setPriorita(o.isPriorita());
+        dto.setGiorniAttivi(o.getGiorniAttivi());
+        dto.setOraInizio(o.getOraInizio());
+        dto.setOraFine(o.getOraFine());
+        dto.setRipetizioniGiornaliere(o.getRipetizioniGiornaliere());
+        return dto;
     }
 }

@@ -19,12 +19,16 @@
     <description>Gestione pattuglie e obiettivi - Istituto di Vigilanza</description>
 
     <properties>
-        <java.version>21</java.version>
-        <jjwt.version>0.12.6</jjwt.version>
-        <!-- Il frontend Angular vive in ./frontend ed è compilato e copiato
-             in target/classes/static durante la build, cosicché il jar
-             finale contenga sia il backend che il frontend (build unica). -->
-        <frontend.dir>${project.basedir}/frontend</frontend.dir>
+        <java.version>17</java.version>
+        <!-- Versioni Node/npm usate per compilare il frontend Angular durante la build Maven -->
+        <node.version>v20.11.1</node.version>
+        <npm.version>10.2.4</npm.version>
+        <!-- Cartella dove Angular scrive la build di produzione (vedi frontend/angular.json: outputPath).
+             Il builder "application" di Angular 17 crea sempre una sottocartella "browser". -->
+        <frontend.build.output>${project.basedir}/frontend/dist/gestione-pattuglie-frontend/browser</frontend.build.output>
+        <!-- MapStruct: genera l'implementazione dei mapper entità -> DTO in fase di compilazione -->
+        <mapstruct.version>1.6.3</mapstruct.version>
+        <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
     </properties>
 
     <dependencies>
@@ -38,105 +42,284 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
+        <!-- Sicurezza: login utente/password + login tramite tag NFC, sessione stateless via JWT -->
         <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
-            <scope>runtime</scope>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
-
-        <!-- JWT -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
-            <version>${jjwt.version}</version>
+            <version>0.12.6</version>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-impl</artifactId>
-            <version>${jjwt.version}</version>
+            <version>0.12.6</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-jackson</artifactId>
-            <version>${jjwt.version}</version>
+            <version>0.12.6</version>
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Driver Microsoft SQL Server -->
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Jackson: spring-boot-starter-web include già jackson-databind, ma dichiariamo
+             esplicitamente il modulo per i tipi data/ora di Java 8+ (LocalDateTime, usato
+             ovunque nelle entità), così la serializzazione JSON non dipende da una
+             risoluzione implicita delle dipendenze transitive. Spring Boot lo registra
+             automaticamente sull'ObjectMapper non appena è sul classpath: nessun bean
+             di configurazione aggiuntivo necessario. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+
+        <!-- MapStruct: genera l'implementazione dei mapper che convertono le entità JPA
+             nei DTO di risposta delle API (mai un'entità restituita direttamente). -->
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>${mapstruct.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-hibernate6</artifactId>
+            <version>2.17.2</version> <!-- Use your matching Jackson version -->
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-test</artifactId>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
     <build>
-        <finalName>gestione-pattuglie</finalName>
+        <!-- ============================================================
+             Filtering delle risorse: SOLO application.properties viene filtrato
+             da Maven, e solo per il segnaposto @spring.profiles.active@ (vedi sotto
+             e i <profiles> a fine file). Si usa il delimitatore "@...@" invece di
+             quello di default "${...}" perché application.properties è pieno di
+             placeholder "${DB_HOST:...}" destinati a Spring Boot (risolti a runtime,
+             non in fase di build): con i delimitatori di default Maven proverebbe
+             a sostituirli anche lui, rompendo la configurazione. Gli altri file
+             (application-dev.properties, application-prod.properties, ecc.) restano
+             non filtrati, quindi il tuning è a costo zero per il resto del progetto.
+             ============================================================ -->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>application.properties</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>application.properties</exclude>
+                </excludes>
+            </resource>
+        </resources>
+
         <plugins>
+            <!-- Configurazione esplicita degli annotation processor: Lombok genera getter/setter/
+                 costruttori, MapStruct genera l'implementazione dei mapper leggendo quei metodi.
+                 Senza questo ordine esplicito (lombok -> lombok-mapstruct-binding -> mapstruct
+                 -processor) MapStruct può essere eseguito PRIMA che Lombok abbia generato i
+                 metodi, non trovandoli: è il problema più comune quando si usano insieme. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok-mapstruct-binding</artifactId>
+                            <version>${lombok-mapstruct-binding.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.mapstruct</groupId>
+                            <artifactId>mapstruct-processor</artifactId>
+                            <version>${mapstruct.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
             </plugin>
 
-            <!-- Compila Angular e copia il risultato in target/classes/static
-                 PRIMA della fase di packaging del jar, così il frontend
-                 finisce impacchettato insieme al backend. -->
+            <!-- ============================================================
+                 Build del frontend Angular integrata nella build Maven:
+                 "mvn clean package" compila ANCHE il frontend e lo include
+                 nel jar Spring Boot (nessun comando npm separato necessario
+                 per produrre l'artefatto finale). Attivo di default; per
+                 saltarlo in un ambiente senza accesso a internet/npm, usare:
+                     mvn clean package -DskipFrontendBuild
+                 (vedi profilo "skip-frontend-build" più sotto).
+                 ============================================================ -->
             <plugin>
                 <groupId>com.github.eirslett</groupId>
                 <artifactId>frontend-maven-plugin</artifactId>
                 <version>1.15.0</version>
                 <configuration>
-                    <workingDirectory>${frontend.dir}</workingDirectory>
-                    <installDirectory>${frontend.dir}</installDirectory>
+                    <workingDirectory>${project.basedir}/frontend</workingDirectory>
                 </configuration>
                 <executions>
                     <execution>
                         <id>install-node-and-npm</id>
-                        <goals>
-                            <goal>install-node-and-npm</goal>
-                        </goals>
+                        <goals><goal>install-node-and-npm</goal></goals>
+                        <phase>generate-resources</phase>
                         <configuration>
-                            <nodeVersion>v20.15.0</nodeVersion>
+                            <nodeVersion>${node.version}</nodeVersion>
+                            <npmVersion>${npm.version}</npmVersion>
                         </configuration>
                     </execution>
                     <execution>
                         <id>npm-install</id>
-                        <goals>
-                            <goal>npm</goal>
-                        </goals>
+                        <goals><goal>npm</goal></goals>
+                        <phase>generate-resources</phase>
                         <configuration>
                             <arguments>install</arguments>
                         </configuration>
                     </execution>
                     <execution>
                         <id>npm-build</id>
-                        <goals>
-                            <goal>npm</goal>
-                        </goals>
+                        <goals><goal>npm</goal></goals>
                         <phase>generate-resources</phase>
                         <configuration>
-                            <!-- Lo script "build" in frontend/package.json deve fare
-                                 ng build --output-path=../src/main/resources/static
-                                 oppure --output-path=dist e poi il plugin resources
-                                 copia da lì: qui usiamo l'opzione più semplice,
-                                 output diretto in resources/static. -->
                             <arguments>run build</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Copia i file compilati di Angular in target/classes/static, così Spring Boot
+                 li impacchetta nel jar e li serve come risorse statiche (vedi SpaWebConfig
+                 per il fallback delle rotte Angular lato client, es. /le-mie-auto). -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <configuration>
+                    <!-- Vedi commento su <resources> più sopra: solo "@...@" viene
+                         considerato un segnaposto da filtrare, "${...}" (usato da Spring
+                         Boot in application.properties) resta intatto. -->
+                    <useDefaultDelimiters>false</useDefaultDelimiters>
+                    <delimiters>
+                        <delimiter>@</delimiter>
+                    </delimiters>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>copy-frontend-build</id>
+                        <phase>process-resources</phase>
+                        <goals><goal>copy-resources</goal></goals>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/static</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${frontend.build.output}</directory>
+                                </resource>
+                            </resources>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- ============================================================
+             Profili di COMPILAZIONE (Maven, non Spring): decidono quale profilo
+             Spring viene "impresso" di default nel jar tramite il filtering di
+             application.properties (vedi <resources> più sopra). In entrambi i
+             casi resta comunque possibile scegliere il profilo a runtime con la
+             variabile d'ambiente SPRING_PROFILES_ACTIVE, senza dover ricompilare.
+
+               mvn clean package            -> profilo "dev" (ATTIVO DI DEFAULT):
+                                                pensato per Docker Compose, vedi
+                                                docker-compose.yml e Dockerfile
+               mvn clean package -Pprod     -> profilo "prod": per il server di
+                                                produzione reale, vedi
+                                                application-prod.properties
+             ============================================================ -->
+        <profile>
+            <id>dev</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <spring.profiles.active>dev</spring.profiles.active>
+            </properties>
+        </profile>
+        <profile>
+            <id>prod</id>
+            <properties>
+                <spring.profiles.active>prod</spring.profiles.active>
+            </properties>
+        </profile>
+
+        <!-- Attivabile con -DskipFrontendBuild: compila SOLO il backend (utile in sviluppo
+             quando il frontend viene avviato a parte con "ng serve", vedi README). -->
+        <profile>
+            <id>skip-frontend-build</id>
+            <activation>
+                <property><name>skipFrontendBuild</name></property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.eirslett</groupId>
+                        <artifactId>frontend-maven-plugin</artifactId>
+                        <executions>
+                            <execution><id>install-node-and-npm</id><phase>none</phase></execution>
+                            <execution><id>npm-install</id><phase>none</phase></execution>
+                            <execution><id>npm-build</id><phase>none</phase></execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <executions>
+                            <execution><id>copy-frontend-build</id><phase>none</phase></execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

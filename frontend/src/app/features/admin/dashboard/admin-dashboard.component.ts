@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -11,6 +12,7 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
         <h2>Amministrazione</h2>
         <a routerLink="utenti" routerLinkActive="active">Utenti</a>
         <a routerLink="pattuglie" routerLinkActive="active">Pattuglie e Obiettivi</a>
+        <button class="btn-esci" (click)="esci()">Esci</button>
       </nav>
       <main class="admin-content">
         <router-outlet></router-outlet>
@@ -28,6 +30,8 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
       color: #fff;
       padding: 1.5rem 1rem;
       flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
     }
     .admin-nav h2 {
       font-size: 1.1rem;
@@ -46,6 +50,20 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
       color: #0a1f44;
       font-weight: bold;
     }
+    .btn-esci {
+      margin-top: auto;
+      background: transparent;
+      color: #ff8a80;
+      border: 1px solid #ff8a80;
+      padding: 0.6rem 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      text-align: left;
+    }
+    .btn-esci:hover {
+      background: #ff8a80;
+      color: #0a1f44;
+    }
     .admin-content {
       flex: 1;
       padding: 2rem;
@@ -53,4 +71,13 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
     }
   `]
 })
-export class AdminDashboardComponent {}
+export class AdminDashboardComponent {
+  constructor(private authService: AuthService, private router: Router) {}
+
+  esci(): void {
+    this.authService.logout().subscribe({
+      next: () => this.router.navigate(['/login']),
+      error: () => this.router.navigate(['/login'])
+    });
+  }
+}

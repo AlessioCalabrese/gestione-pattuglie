@@ -7,6 +7,8 @@ public class OttimizzazioneRottaResponse {
 
     private List<ObiettivoDTO> obiettivi;
 
+    private int obiettiviInServizioOggi; // quanti degli obiettivi restituiti fanno parte del percorso odierno
+
     private double distanzaOriginaleKm;   // percorrendo gli obiettivi nell'ordine attuale
     private double distanzaOttimizzataKm; // percorrendo gli obiettivi nell'ordine ottimizzato
     private double risparmioKm;
@@ -27,6 +29,14 @@ public class OttimizzazioneRottaResponse {
 
     public void setObiettivi(List<ObiettivoDTO> obiettivi) {
         this.obiettivi = obiettivi;
+    }
+
+    public int getObiettiviInServizioOggi() {
+        return obiettiviInServizioOggi;
+    }
+
+    public void setObiettiviInServizioOggi(int obiettiviInServizioOggi) {
+        this.obiettiviInServizioOggi = obiettiviInServizioOggi;
     }
 
     public double getDistanzaOriginaleKm() {

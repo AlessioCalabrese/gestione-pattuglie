@@ -45,10 +45,11 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/", "/index.html", "/assets/**", "/*.js", "/*.css").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/pattuglie/**", "/api/obiettivi/**").hasAnyRole("ADMIN", "PATTUGLIA")
-                .anyRequest().authenticated()
+                .requestMatchers("/api/**").authenticated()
+                // Frontend Angular (index.html, bundle e rotte lato client): pubblico
+                .anyRequest().permitAll()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

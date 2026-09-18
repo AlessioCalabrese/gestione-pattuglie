@@ -25,6 +25,107 @@ h1 {
   border-radius: 4px;
 }
 
+.checkbox-priorita {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: #0a1f44;
+  width: 100%;
+}
+
+.riga-indirizzo {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.campo-via {
+  flex: 3;
+}
+
+.campo-civico {
+  flex: 1;
+  min-width: 60px;
+}
+
+.campo-comune {
+  flex: 2;
+}
+
+.blocco-pianificazione {
+  background: #f9fafc;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.75rem;
+  width: 100%;
+}
+
+.sottotitolo {
+  margin: 0.5rem 0 0.4rem;
+  font-size: 0.8rem;
+  color: #666;
+  font-weight: bold;
+}
+
+.sottotitolo:first-child {
+  margin-top: 0;
+}
+
+.giorni-settimana {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.chip-giorno {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 14px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: #0a1f44;
+}
+
+.chip-giorno.selezionato {
+  background: #0a1f44;
+  color: #fff;
+  border-color: #0a1f44;
+}
+
+.chip-giorno input {
+  display: none;
+}
+
+.riga-orario {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.riga-orario input {
+  padding: 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.campo-ripetizioni {
+  width: 80px;
+  padding: 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.avviso-validazione {
+  width: 100%;
+  font-size: 0.8rem;
+  color: #b00020;
+  margin: 0.3rem 0 0;
+}
+
 .form-nuovo button, .form-obiettivo button {
   background: #c9a227;
   color: #0a1f44;

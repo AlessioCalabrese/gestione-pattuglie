@@ -7,21 +7,18 @@ public class PattugliaDTO {
     private Long id;
     private String nome;
     private String descrizione;
-    private String veicoloTarga;
     private boolean attiva;
     private List<ObiettivoDTO> obiettivi;
-    private java.math.BigDecimal consumoMedioL100Km;
     private com.vigilanza.pattuglie.entity.TipoCarburante tipoCarburante;
 
     public PattugliaDTO() {
     }
 
-    public PattugliaDTO(Long id, String nome, String descrizione, String veicoloTarga,
+    public PattugliaDTO(Long id, String nome, String descrizione,
                          boolean attiva, List<ObiettivoDTO> obiettivi) {
         this.id = id;
         this.nome = nome;
         this.descrizione = descrizione;
-        this.veicoloTarga = veicoloTarga;
         this.attiva = attiva;
         this.obiettivi = obiettivi;
     }
@@ -50,14 +47,6 @@ public class PattugliaDTO {
         this.descrizione = descrizione;
     }
 
-    public String getVeicoloTarga() {
-        return veicoloTarga;
-    }
-
-    public void setVeicoloTarga(String veicoloTarga) {
-        this.veicoloTarga = veicoloTarga;
-    }
-
     public boolean isAttiva() {
         return attiva;
     }
@@ -72,14 +61,6 @@ public class PattugliaDTO {
 
     public void setObiettivi(List<ObiettivoDTO> obiettivi) {
         this.obiettivi = obiettivi;
-    }
-
-    public java.math.BigDecimal getConsumoMedioL100Km() {
-        return consumoMedioL100Km;
-    }
-
-    public void setConsumoMedioL100Km(java.math.BigDecimal consumoMedioL100Km) {
-        this.consumoMedioL100Km = consumoMedioL100Km;
     }
 
     public com.vigilanza.pattuglie.entity.TipoCarburante getTipoCarburante() {
