@@ -1,81 +1,117 @@
 # ==========================================
-# SPRING BOOT (Java / Maven / Gradle)
+# BACKEND (Java / Spring Boot / Maven)
 # ==========================================
-# Compilati e Build
+# Output di build
 target/
 build/
-.gradle/
-bin/
 out/
+bin/
+.gradle/
+
+# Artefatti compilati (il wrapper Maven, se presente, va invece versionato)
+*.jar
+*.war
+*.ear
+*.class
+!.mvn/wrapper/maven-wrapper.jar
 
 # Log e file temporanei
 *.log
-/logs/
-/tmp/
+logs/
+tmp/
+.tmp/
 
-# File di sistema e crash dump
+# Crash dump JVM
 hs_err_pid*
 replay_pid*
 
 # ==========================================
-# ANGULAR (Node / Frontend)
+# FRONTEND (Angular / Node)
 # ==========================================
 # Dipendenze
 node_modules/
 
-# Output di Build e Cache
-/dist/
-/.angular/
-.tmp/
+# Node/npm scaricati da frontend-maven-plugin in fase di build (~80 MB, con node.exe)
+frontend/node/
 
-# Log di npm/yarn
+# Output di build Angular e cache (qualunque sia la cartella di destinazione)
+dist/
+.angular/
+frontend/dist/
+
+# Build Angular copiata tra le risorse di Spring Boot: viene rigenerata da "npm run build"
+src/main/resources/static/
+
+# Log e cache di npm/yarn/pnpm
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+.npm/
+.eslintcache
 
 # Copertura test
-/coverage/
+coverage/
+*.lcov
 
 # ==========================================
-# CONFIGURAZIONI IDE / EDITORI
+# IDE / EDITOR
 # ==========================================
 # IntelliJ IDEA
 .idea/
 *.iws
 *.iml
 *.ipr
-out/
 
-# Eclipse
+# Eclipse / STS
 .metadata/
 .classpath
 .project
 .settings/
+.factorypath
 *.launch
 
+# NetBeans
+nbproject/
+nbbuild/
+
 # Visual Studio Code
-.vscode/
+.vscode/*
 !.vscode/extensions.json
 
-# Sistemi operativi
+# ==========================================
+# SISTEMA OPERATIVO
+# ==========================================
 .DS_Store
 Thumbs.db
+desktop.ini
+*~
+*.swp
 
 # ==========================================
 # SICUREZZA & DATI SENSIBILI
 # ==========================================
-# Credenziali e variabili d'ambiente personali
+# Variabili d'ambiente e override locali (non committare mai credenziali reali)
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+application-local.properties
+application-*-local.properties
+application-secret*.properties
+
+# Chiavi e certificati
 *.pem
+*.key
 *.jks
 *.p12
-# ==========================================
-# SPRING BOOT / MAVEN
-# ==========================================
-# Esclusione della cartella di build Maven
-*.jar
-*.war
+*.pfx
+*.keystore
 
+# ==========================================
+# DATI LOCALI
+# ==========================================
+# Dump e backup del database
+*.bak
+*.mdf
+*.ldf
+*.dump
