@@ -19,8 +19,9 @@ export class AuthService {
     );
   }
 
-  loginNfc(nfcTagId: string): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>('/api/auth/login-nfc', { nfcTagId }).pipe(
+  /** Login con il codice del tag NFC; manuale=true se il codice è stato digitato invece che letto dal lettore. */
+  loginNfc(nfcTagId: string, manuale = false): Observable<LoginResponse> {
+    return this.http.post<LoginResponse>('/api/auth/login-nfc', { nfcTagId, manuale }).pipe(
       tap(res => localStorage.setItem(this.TOKEN_KEY, res.token))
     );
   }

@@ -40,7 +40,7 @@ public class AuthController {
     public ResponseEntity<?> loginNfc(@RequestBody com.vigilanza.pattuglie.dto.LoginNfcRequest request,
                                        HttpServletRequest httpRequest) {
         try {
-            String token = authService.loginNfc(request.getNfcTagId(), httpRequest.getRemoteAddr());
+            String token = authService.loginNfc(request.getNfcTagId(), httpRequest.getRemoteAddr(), request.isManuale());
             return ResponseEntity.ok(Map.of("token", token));
         } catch (SecurityException e) {
             return ResponseEntity.status(401).body(Map.of("errore", e.getMessage()));

@@ -6,7 +6,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const token = authService.getToken();
 
-  if (token) {
+  // Il token va solo alle API dell'applicazione: mai a servizi esterni (es. geolocalizzazione da IP).
+  if (token && req.url.startsWith('/api/')) {
     req = req.clone({
       setHeaders: { Authorization: `Bearer ${token}` }
     });

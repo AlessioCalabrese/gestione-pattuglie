@@ -37,7 +37,16 @@ public class ObiettivoService {
     private final FuelPriceService fuelPriceService;
     private final WhatsappMessageService whatsappMessageService;
 
-    private static final DateTimeFormatter FORMATO_ORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+    /**
+     * Massimo valore della colonna obiettivo_flag.precisione_metri (DECIMAL(6,2)). Un errore di 10 km o più
+     * (tipico delle posizioni stimate dalla rete) viene registrato come 9999,99 m: il tipo di posizione
+     * resta comunque indicato nella nota del flag.
+     */
+    private static final BigDecimal PRECISIONE_MASSIMA_METRI = new BigDecimal("9999.99");
+    /** Lunghezza della colonna obiettivo_flag.note. */
+    private static final int MAX_NOTE = 255;
+
+    private static final DateTimeFormatter FORMATO_ORA =DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
     public ObiettivoService(ObiettivoRepository obiettivoRepository,
                              ObiettivoFlagRepository obiettivoFlagRepository,
@@ -140,8 +149,12 @@ public class ObiettivoService {
 
         ObiettivoFlag flag = new ObiettivoFlag(obiettivo, utente, obiettivo.getPattuglia(),
                 request.getLatitudine(), request.getLongitudine());
-        flag.setPrecisioneMetri(request.getPrecisioneMetri());
-        flag.setNote(request.getNote());
+        // Valori fuori scala (dispositivi con accuratezza anomala) non devono far fallire la registrazione del flag
+        BigDecimal precisione = request.getPrecisioneMetri();
+        flag.setPrecisioneMetri(precisione == null ? null
+                : precisione.max(BigDecimal.ZERO).min(PRECISIONE_MASSIMA_METRI).setScale(2, RoundingMode.HALF_UP));
+        String note = request.getNote();
+        flag.setNote(note != null && note.length() > MAX_NOTE ? note.substring(0, MAX_NOTE) : note);
 
         obiettivoFlagRepository.save(flag);
 

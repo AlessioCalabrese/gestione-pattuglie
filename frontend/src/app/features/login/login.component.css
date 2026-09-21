@@ -79,6 +79,14 @@ button:disabled {
   margin: 0;
 }
 
+.area-nfc .separatore {
+  margin-top: 0.5rem;
+}
+
+.form-codice-nfc {
+  width: 100%;
+}
+
 .avviso {
   color: var(--colore-errore);
 }

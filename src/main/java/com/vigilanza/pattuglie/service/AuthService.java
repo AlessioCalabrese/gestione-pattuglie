@@ -6,6 +6,8 @@ import com.vigilanza.pattuglie.security.JwtUtil;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class AuthService {
 
@@ -39,16 +41,30 @@ public class AuthService {
         return token;
     }
 
-    public String loginNfc(String nfcTagId, String indirizzoIp) {
-        Utente utente = utenteRepository.findByNfcTagId(nfcTagId)
-                .orElseThrow(() -> new SecurityException("Tag NFC non riconosciuto"));
+    /**
+     * Login con il codice del tag NFC, per qualunque ruolo. Il codice arriva dal lettore NFC oppure, se il
+     * dispositivo non lo supporta, digitato a mano ("manuale"): in quel caso l'accesso è tracciato come tale.
+     */
+    public String loginNfc(String nfcTagId, String indirizzoIp, boolean manuale) {
+        String codice = CodiceNfc.normalizza(nfcTagId);
+        if (codice.isEmpty()) {
+            throw new SecurityException("Tag NFC non riconosciuto");
+        }
+
+        List<Utente> trovati = utenteRepository.findByNfcTagIdNormalizzato(codice);
+        if (trovati.size() != 1) { // nessuno, oppure codice assegnato in modo ambiguo
+            throw new SecurityException("Tag NFC non riconosciuto");
+        }
+        Utente utente = trovati.get(0);
 
         if (!utente.isAbilitato()) {
             throw new SecurityException("Utente disabilitato");
         }
 
         String token = jwtUtil.generaToken(utente.getId(), utente.getUsername(), utente.getRuolo().name());
-        logSistemaService.registra(utente, "LOGIN", "Login effettuato (tag NFC)", indirizzoIp);
+        logSistemaService.registra(utente, "LOGIN",
+                manuale ? "Login effettuato (tag NFC, codice inserito manualmente)" : "Login effettuato (tag NFC)",
+                indirizzoIp);
         return token;
     }
 

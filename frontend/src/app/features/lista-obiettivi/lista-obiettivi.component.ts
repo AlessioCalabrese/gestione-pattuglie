@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import { PattugliaService, Obiettivo, RisultatoOttimizzazione } from '../../core/services/pattuglia.service';
+import { PattugliaService, Obiettivo, RisultatoOttimizzazione, FlagRequest } from '../../core/services/pattuglia.service';
+import { PosizioneService } from '../../core/services/posizione.service';
 import { AuthService } from '../../core/services/auth.service';
 
 @Component({
@@ -104,6 +105,7 @@ export class ListaObiettiviComponent implements OnInit {
     private route: ActivatedRoute,
     private pattugliaService: PattugliaService,
     private authService: AuthService,
+    private posizioneService: PosizioneService,
     private router: Router
   ) {}
 
@@ -134,76 +136,60 @@ export class ListaObiettiviComponent implements OnInit {
 
   flagObiettivo(obiettivo: Obiettivo): void {
     this.messaggio = '';
-
-    if (!navigator.geolocation) {
-      this.messaggio = 'Geolocalizzazione non supportata da questo dispositivo.';
-      return;
-    }
-
     this.flaggando = obiettivo.id;
 
-    navigator.geolocation.getCurrentPosition(
-      (posizione) => {
-        const request = {
-          obiettivoId: obiettivo.id,
-          latitudine: posizione.coords.latitude,
-          longitudine: posizione.coords.longitude,
-          precisioneMetri: posizione.coords.accuracy
-        };
+    this.posizioneService.rileva().then(posizione => {
+      const daGps = posizione.fonte === 'GPS';
+      const request: FlagRequest = {
+        obiettivoId: obiettivo.id,
+        latitudine: posizione.latitudine,
+        longitudine: posizione.longitudine,
+        precisioneMetri: posizione.precisioneMetri ?? undefined,
+        // Le posizioni non GPS restano riconoscibili nello storico dei flag
+        note: daGps ? undefined : PosizioneService.descrizioneFonte(posizione)
+      };
 
-        this.pattugliaService.flagObiettivo(this.pattugliaId, request).subscribe({
-          next: () => {
-            this.messaggio = `Obiettivo "${obiettivo.nome}" registrato.`;
-            this.flaggando = null;
-            this.caricaObiettivi();
-          },
-          error: () => {
-            this.messaggio = 'Errore durante la registrazione del flag.';
-            this.flaggando = null;
-          }
-        });
-      },
-      () => {
-        this.messaggio = 'Impossibile rilevare la posizione. Verifica i permessi GPS.';
-        this.flaggando = null;
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+      this.pattugliaService.flagObiettivo(this.pattugliaId, request).subscribe({
+        next: () => {
+          this.messaggio = `Obiettivo "${obiettivo.nome}" registrato.`
+            + (daGps ? '' : ` ${PosizioneService.descrizioneFonte(posizione)}.`);
+          this.flaggando = null;
+          this.caricaObiettivi();
+        },
+        error: () => {
+          this.messaggio = 'Errore durante la registrazione del flag.';
+          this.flaggando = null;
+        }
+      });
+    }).catch(() => {
+      this.messaggio = 'Impossibile rilevare la posizione: GPS non disponibile e posizione dalla rete non ricavabile.';
+      this.flaggando = null;
+    });
   }
 
   ottimizzaRotta(): void {
     this.messaggio = '';
     this.risultatoOttimizzazione = null;
-
-    if (!navigator.geolocation) {
-      this.messaggio = 'Geolocalizzazione non supportata da questo dispositivo.';
-      return;
-    }
-
     this.ottimizzando = true;
 
-    navigator.geolocation.getCurrentPosition(
-      (posizione) => {
-        this.pattugliaService.ottimizzaRotta(
-          this.pattugliaId,
-          posizione.coords.latitude,
-          posizione.coords.longitude
-        ).subscribe({
-          next: (risultato) => {
-            this.obiettivi = risultato.obiettivi;
-            this.risultatoOttimizzazione = risultato;
-            this.ottimizzando = false;
-          },
-          error: () => {
-            this.messaggio = 'Errore durante il calcolo della rotta.';
-            this.ottimizzando = false;
+    this.posizioneService.rileva().then(posizione => {
+      this.pattugliaService.ottimizzaRotta(this.pattugliaId, posizione.latitudine, posizione.longitudine).subscribe({
+        next: (risultato) => {
+          this.obiettivi = risultato.obiettivi;
+          this.risultatoOttimizzazione = risultato;
+          this.ottimizzando = false;
+          if (posizione.fonte !== 'GPS') {
+            this.messaggio = `${PosizioneService.descrizioneFonte(posizione)}: il punto di partenza della rotta è approssimativo.`;
           }
-        });
-      },
-      () => {
-        this.messaggio = 'Impossibile rilevare la posizione di partenza.';
-        this.ottimizzando = false;
-      }
-    );
+        },
+        error: () => {
+          this.messaggio = 'Errore durante il calcolo della rotta.';
+          this.ottimizzando = false;
+        }
+      });
+    }).catch(() => {
+      this.messaggio = 'Impossibile rilevare la posizione di partenza: GPS non disponibile e posizione dalla rete non ricavabile.';
+      this.ottimizzando = false;
+    });
   }
 }

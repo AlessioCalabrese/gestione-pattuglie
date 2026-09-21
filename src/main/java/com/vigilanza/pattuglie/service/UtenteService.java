@@ -29,7 +29,8 @@ public class UtenteService {
         if (utenteRepository.findByUsername(username).isPresent()) {
             throw new IllegalArgumentException("Username già esistente");
         }
-        if (nfcTagId != null && !nfcTagId.isBlank() && utenteRepository.findByNfcTagId(nfcTagId).isPresent()) {
+        if (nfcTagId != null && !nfcTagId.isBlank()
+                && !utenteRepository.findByNfcTagIdNormalizzato(CodiceNfc.normalizza(nfcTagId)).isEmpty()) {
             throw new IllegalArgumentException("Tag NFC già assegnato a un altro utente");
         }
         Utente utente = new Utente(username, passwordEncoder.encode(password), nome, cognome, ruolo);

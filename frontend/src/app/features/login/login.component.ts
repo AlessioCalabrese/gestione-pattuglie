@@ -45,8 +45,8 @@ declare global {
       <!-- Login con tag NFC -->
       <div *ngIf="modalita === 'nfc'" class="area-nfc">
         <p *ngIf="!nfcSupportato" class="avviso">
-          Il browser/dispositivo non supporta la lettura NFC (Web NFC API).
-          Su Android usa Chrome; su altri dispositivi usa un lettore NFC dedicato collegato all'app.
+          Il browser/dispositivo non supporta la lettura NFC (Web NFC API): puoi inserire a mano il codice del tag.
+          Su Android la lettura funziona con Chrome.
         </p>
         <p *ngIf="nfcSupportato && !inAscolto">
           Avvicina il tag NFC al dispositivo per accedere.
@@ -54,6 +54,14 @@ declare global {
         <button *ngIf="nfcSupportato" (click)="avviaLetturaNfc()" [disabled]="inAscolto">
           {{ inAscolto ? 'In ascolto…' : 'Avvia lettura NFC' }}
         </button>
+
+        <!-- Inserimento manuale del codice del tag (utile se la lettura NFC non è disponibile) -->
+        <p class="separatore">{{ nfcSupportato ? 'oppure inserisci il codice del tag' : 'Inserisci il codice del tag' }}</p>
+        <form class="form-codice-nfc" (ngSubmit)="onSubmitCodiceNfc()">
+          <input type="text" name="codiceNfc" [(ngModel)]="codiceNfc" autocomplete="off" autocapitalize="off"
+                 placeholder="Codice tag NFC (es. 04:a1:b2:c3:d4:e5:f6)" required />
+          <button type="submit" [disabled]="caricamento || !codiceNfc.trim()">Accedi con il codice</button>
+        </form>
       </div>
 
       <p class="errore" *ngIf="messaggioErrore">{{ messaggioErrore }}</p>
@@ -68,6 +76,8 @@ export class LoginComponent implements OnDestroy {
   password = '';
   caricamento = false;
   messaggioErrore = '';
+
+  codiceNfc = '';
 
   nfcSupportato = typeof window !== 'undefined' && !!window.NDEFReader;
   inAscolto = false;
@@ -89,6 +99,24 @@ export class LoginComponent implements OnDestroy {
       next: () => this.dopoLoginRiuscito(),
       error: () => {
         this.messaggioErrore = 'Credenziali non valide o utente disabilitato';
+        this.caricamento = false;
+      }
+    });
+  }
+
+  /** Login con il codice del tag digitato a mano: vale per qualunque ruolo, come la lettura NFC. */
+  onSubmitCodiceNfc(): void {
+    const codice = this.codiceNfc.trim();
+    if (!codice) {
+      return;
+    }
+    this.caricamento = true;
+    this.messaggioErrore = '';
+
+    this.authService.loginNfc(codice, true).subscribe({
+      next: () => this.dopoLoginRiuscito(),
+      error: () => {
+        this.messaggioErrore = 'Tag NFC non riconosciuto o utente disabilitato';
         this.caricamento = false;
       }
     });
