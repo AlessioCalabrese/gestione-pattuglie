@@ -71,6 +71,17 @@ public class GeocodingService {
         BigDecimal lon = new BigDecimal(primo.get("lon").asText());
         String indirizzoNormalizzato = primo.has("display_name") ? primo.get("display_name").asText() : indirizzo;
 
-        return new GeocodificaResponse(lat, lon, indirizzoNormalizzato);
+        return new GeocodificaResponse(lat, lon, indirizzoNormalizzato, estraiStrada(primo.path("address")));
+    }
+
+    /** Nome della strada dai dettagli d'indirizzo di Nominatim, o null se il risultato non è una strada. */
+    private static String estraiStrada(JsonNode indirizzo) {
+        for (String chiave : new String[]{"road", "pedestrian", "path", "footway"}) {
+            String valore = indirizzo.path(chiave).asText("");
+            if (!valore.isBlank()) {
+                return valore;
+            }
+        }
+        return null;
     }
 }

@@ -5,6 +5,7 @@ import { ListaObiettiviComponent } from './features/lista-obiettivi/lista-obiett
 import { AdminDashboardComponent } from './features/admin/dashboard/admin-dashboard.component';
 import { GestioneUtentiComponent } from './features/admin/gestione-utenti/gestione-utenti.component';
 import { GestionePattuglieComponent } from './features/admin/gestione-pattuglie/gestione-pattuglie.component';
+import { LogSistemaComponent } from './features/admin/log-sistema/log-sistema.component';
 import { authGuard } from './core/guards/auth.guard';
 import { adminGuard } from './core/guards/admin.guard';
 
@@ -19,6 +20,7 @@ export const routes: Routes = [
     children: [
       { path: 'utenti', component: GestioneUtentiComponent },
       { path: 'pattuglie', component: GestionePattuglieComponent },
+      { path: 'log', component: LogSistemaComponent },
       { path: '', redirectTo: 'utenti', pathMatch: 'full' }
     ]
   },

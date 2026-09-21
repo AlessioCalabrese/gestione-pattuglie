@@ -13,7 +13,6 @@ public class ObiettivoDTO {
     private String nome;
 
     private String via;
-    private String numeroCivico;
     private String comune;
     /** Indirizzo completo, ricostruito lato server per comodità di visualizzazione. */
     private String indirizzo;
@@ -43,16 +42,15 @@ public class ObiettivoDTO {
     public ObiettivoDTO() {
     }
 
-    public ObiettivoDTO(Long id, Long pattugliaId, String nome, String via, String numeroCivico, String comune,
+    public ObiettivoDTO(Long id, Long pattugliaId, String nome, String via, String comune,
                          BigDecimal latitudine, BigDecimal longitudine,
                          Integer ordineVisita, boolean attivo) {
         this.id = id;
         this.pattugliaId = pattugliaId;
         this.nome = nome;
         this.via = via;
-        this.numeroCivico = numeroCivico;
         this.comune = comune;
-        this.indirizzo = via + " " + numeroCivico + ", " + comune;
+        this.indirizzo = via + ", " + comune;
         this.latitudine = latitudine;
         this.longitudine = longitudine;
         this.ordineVisita = ordineVisita;
@@ -89,14 +87,6 @@ public class ObiettivoDTO {
 
     public void setVia(String via) {
         this.via = via;
-    }
-
-    public String getNumeroCivico() {
-        return numeroCivico;
-    }
-
-    public void setNumeroCivico(String numeroCivico) {
-        this.numeroCivico = numeroCivico;
     }
 
     public String getComune() {

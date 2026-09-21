@@ -28,11 +28,25 @@ public class PattugliaOperativaController {
         this.obiettivoService = obiettivoService;
     }
 
-    /** Pattuglie che l'utente loggato può selezionare. */
+    /**
+     * Pattuglie che l'utente loggato può selezionare: le sue preferite se ne ha scelte (a meno di tutte=true),
+     * altrimenti tutte le pattuglie attive.
+     */
     @GetMapping("/pattuglie/mie")
-    public List<PattugliaDTO> pattuglieSelezionabili() {
+    public List<PattugliaDTO> pattuglieSelezionabili(@RequestParam(defaultValue = "false") boolean tutte) {
         Long utenteId = AuthenticatedUser.getUtenteId();
-        return pattugliaService.findSelezionabiliPerUtente(utenteId);
+        return pattugliaService.findSelezionabiliPerUtente(utenteId, tutte);
+    }
+
+    /** Aggiunge o toglie una pattuglia dalle preferite dell'utente loggato. Body: {"preferita": true|false}. */
+    @PutMapping("/pattuglie/{pattugliaId}/preferita")
+    public ResponseEntity<Void> impostaPreferita(@PathVariable Long pattugliaId, @RequestBody Map<String, Boolean> body) {
+        Boolean preferita = body.get("preferita");
+        if (preferita == null) {
+            throw new IllegalArgumentException("Campo 'preferita' mancante");
+        }
+        pattugliaService.impostaPreferita(AuthenticatedUser.getUtenteId(), pattugliaId, preferita);
+        return ResponseEntity.ok().build();
     }
 
     /** Lista obiettivi della pattuglia selezionata, con stato del flag odierno. */

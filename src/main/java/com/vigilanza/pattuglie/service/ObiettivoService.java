@@ -3,12 +3,16 @@ package com.vigilanza.pattuglie.service;
 import com.vigilanza.pattuglie.dto.FlagObiettivoRequest;
 import com.vigilanza.pattuglie.dto.NuovoObiettivoRequest;
 import com.vigilanza.pattuglie.dto.ObiettivoDTO;
+import com.vigilanza.pattuglie.dto.PaginaDTO;
 import com.vigilanza.pattuglie.dto.OttimizzazioneRottaResponse;
 import com.vigilanza.pattuglie.entity.*;
 import com.vigilanza.pattuglie.repository.ObiettivoFlagRepository;
 import com.vigilanza.pattuglie.repository.ObiettivoRepository;
 import com.vigilanza.pattuglie.repository.PattugliaRepository;
 import com.vigilanza.pattuglie.repository.UtenteRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -79,11 +83,12 @@ public class ObiettivoService {
         return obiettivoRepository.save(obiettivo);
     }
 
-    /** Tutti gli obiettivi attivi della pattuglia, indipendentemente dai giorni di servizio (vista amministratore). */
-    public List<ObiettivoDTO> findPerAdmin(Long pattugliaId) {
-        return obiettivoRepository.findByPattugliaIdAndAttivoTrueOrderByOrdineVisitaAsc(pattugliaId).stream()
-                .map(this::toDtoConStatoFlag)
-                .toList();
+    /** Obiettivi attivi della pattuglia in ordine alfabetico, paginati, indipendentemente dai giorni di servizio (vista amministratore). */
+    public PaginaDTO<ObiettivoDTO> findPerAdmin(Long pattugliaId, int pagina, int dimensione) {
+        Pageable pageable = PageRequest.of(Math.max(pagina, 0),
+                Math.min(Math.max(dimensione, 1), PattugliaService.MAX_DIMENSIONE_PAGINA), Sort.by("nome").ascending());
+        return PaginaDTO.da(obiettivoRepository.findByPattugliaIdAndAttivoTrue(pattugliaId, pageable),
+                this::toDtoConStatoFlag);
     }
 
     /** Aggiorna i dati di un obiettivo esistente (indirizzo, pianificazione, telefono...). Lo storico dei flag resta invariato. */
@@ -103,7 +108,6 @@ public class ObiettivoService {
 
         obiettivo.setNome(request.getNome());
         obiettivo.setVia(request.getVia());
-        obiettivo.setNumeroCivico(request.getNumeroCivico());
         obiettivo.setComune(request.getComune());
         obiettivo.setLatitudine(request.getLatitudine());
         obiettivo.setLongitudine(request.getLongitudine());
@@ -251,7 +255,7 @@ public class ObiettivoService {
 
     private ObiettivoDTO toDtoConStatoFlag(Obiettivo o) {
         ObiettivoDTO dto = new ObiettivoDTO(o.getId(), o.getPattuglia().getId(), o.getNome(),
-                o.getVia(), o.getNumeroCivico(), o.getComune(), o.getLatitudine(), o.getLongitudine(),
+                o.getVia(), o.getComune(), o.getLatitudine(), o.getLongitudine(),
                 o.getOrdineVisita(), o.isAttivo());
         dto.setPriorita(o.isPriorita());
         dto.setGiorniAttivi(o.getGiorniAttivi());

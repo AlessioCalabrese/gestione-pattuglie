@@ -10,6 +10,8 @@ public class PattugliaDTO {
     private boolean attiva;
     private List<ObiettivoDTO> obiettivi;
     private com.vigilanza.pattuglie.entity.TipoCarburante tipoCarburante;
+    /** Vero se la pattuglia è tra le preferite dell'utente a cui la lista si riferisce. */
+    private boolean preferita;
 
     public PattugliaDTO() {
     }
@@ -61,6 +63,14 @@ public class PattugliaDTO {
 
     public void setObiettivi(List<ObiettivoDTO> obiettivi) {
         this.obiettivi = obiettivi;
+    }
+
+    public boolean isPreferita() {
+        return preferita;
+    }
+
+    public void setPreferita(boolean preferita) {
+        this.preferita = preferita;
     }
 
     public com.vigilanza.pattuglie.entity.TipoCarburante getTipoCarburante() {

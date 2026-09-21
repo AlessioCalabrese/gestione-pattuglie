@@ -1,0 +1,64 @@
+.filtri {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.filtri label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9em;
+  color: #5f6b7a;
+}
+
+.filtri input,
+.filtri select {
+  padding: 6px 8px;
+}
+
+.conteggio {
+  color: #5f6b7a;
+}
+
+.tabella-log {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.tabella-log th,
+.tabella-log td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e3e6ea;
+  text-align: left;
+  vertical-align: top;
+}
+
+.tabella-log th {
+  background: #eef1f6;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.tipo {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #e8f1fd;
+  color: #1a5fb4;
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.paginazione {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+}

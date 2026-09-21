@@ -9,6 +9,118 @@ h1 {
   margin-bottom: 1.25rem;
 }
 
+.intestazione-pagina {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.btn-aggiorna-coordinate {
+  margin-left: auto; /* in alto a destra */
+  white-space: nowrap;
+}
+
+.pannello-coordinate {
+  margin: 12px 0;
+  padding: 10px 14px;
+  background: #e8f1fd;
+  border: 1px solid #b6d0f5;
+  border-radius: 6px;
+}
+
+.pannello-coordinate.errore {
+  background: #fdecea;
+  border-color: #f2b8b5;
+}
+
+.pannello-coordinate progress {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.proposte {
+  margin-top: 12px;
+  border-top: 1px solid #b6d0f5;
+  padding-top: 8px;
+}
+
+.proposte-intestazione {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.proposte-intestazione button {
+  margin-left: auto;
+}
+
+.proposta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #d5e3f7;
+}
+
+.azioni-proposta {
+  display: flex;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.via-errata {
+  text-decoration: line-through;
+  color: #b3261e;
+}
+
+.via-proposta {
+  font-weight: 600;
+  color: #1a7f43;
+}
+
+.pannello-coordinate .btn-chiudi {
+  margin-left: 12px;
+}
+
+.barra-ricerca {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.barra-ricerca input {
+  flex: 1;
+  padding: 8px 10px;
+}
+
+.barra-ricerca .conteggio {
+  color: #5f6b7a;
+  white-space: nowrap;
+}
+
+.corrispondenze {
+  color: #1a5fb4;
+  font-size: 0.9em;
+}
+
+.paginazione {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.lista-obiettivi-admin li.trovato {
+  background: #e8f1fd;
+}
+
 .lista-obiettivi-admin {
   list-style: none;
   padding: 0;
@@ -66,11 +178,6 @@ h1 {
 
 .campo-via {
   flex: 3;
-}
-
-.campo-civico {
-  flex: 1;
-  min-width: 60px;
 }
 
 .campo-comune {

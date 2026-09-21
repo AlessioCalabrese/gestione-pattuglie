@@ -7,6 +7,7 @@ export interface Pattuglia {
   nome: string;
   descrizione: string;
   attiva: boolean;
+  preferita: boolean; // tra le preferite dell'utente loggato
 }
 
 export interface Obiettivo {
@@ -14,7 +15,6 @@ export interface Obiettivo {
   pattugliaId: number;
   nome: string;
   via: string;
-  numeroCivico: string;
   comune: string;
   indirizzo: string;
   latitudine: number;
@@ -62,8 +62,13 @@ export class PattugliaService {
 
   constructor(private http: HttpClient) {}
 
-  pattuglieSelezionabili(): Observable<Pattuglia[]> {
-    return this.http.get<Pattuglia[]>('/api/pattuglie/mie');
+  /** Le preferite dell'utente se ne ha scelte (a meno di tutte=true), altrimenti tutte le pattuglie attive. */
+  pattuglieSelezionabili(tutte = false): Observable<Pattuglia[]> {
+    return this.http.get<Pattuglia[]>('/api/pattuglie/mie', { params: { tutte } });
+  }
+
+  impostaPreferita(pattugliaId: number, preferita: boolean): Observable<void> {
+    return this.http.put<void>(`/api/pattuglie/${pattugliaId}/preferita`, { preferita });
   }
 
   obiettiviDiPattuglia(pattugliaId: number): Observable<Obiettivo[]> {

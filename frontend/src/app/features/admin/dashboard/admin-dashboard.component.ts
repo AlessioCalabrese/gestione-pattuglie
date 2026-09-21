@@ -12,6 +12,7 @@ import { AuthService } from '../../../core/services/auth.service';
         <h2>Amministrazione</h2>
         <a routerLink="utenti" routerLinkActive="active">Utenti</a>
         <a routerLink="pattuglie" routerLinkActive="active">Pattuglie e Obiettivi</a>
+        <a routerLink="log" routerLinkActive="active">Log di sistema</a>
         <button class="btn-esci" (click)="esci()">Esci</button>
       </nav>
       <main class="admin-content">

@@ -25,9 +25,6 @@ public class Obiettivo {
     @Column(nullable = false, length = 150)
     private String via;
 
-    @Column(name = "numero_civico", nullable = false, length = 20)
-    private String numeroCivico;
-
     @Column(nullable = false, length = 100)
     private String comune;
 
@@ -75,12 +72,11 @@ public class Obiettivo {
     public Obiettivo() {
     }
 
-    public Obiettivo(Pattuglia pattuglia, String nome, String via, String numeroCivico, String comune,
+    public Obiettivo(Pattuglia pattuglia, String nome, String via, String comune,
                       BigDecimal latitudine, BigDecimal longitudine) {
         this.pattuglia = pattuglia;
         this.nome = nome;
         this.via = via;
-        this.numeroCivico = numeroCivico;
         this.comune = comune;
         this.latitudine = latitudine;
         this.longitudine = longitudine;
@@ -88,7 +84,7 @@ public class Obiettivo {
 
     /** Indirizzo completo ricostruito dai singoli campi, usato per geocodifica e visualizzazione. */
     public String getIndirizzoCompleto() {
-        return via + " " + numeroCivico + ", " + comune;
+        return via + ", " + comune;
     }
 
     /**
@@ -138,14 +134,6 @@ public class Obiettivo {
 
     public void setVia(String via) {
         this.via = via;
-    }
-
-    public String getNumeroCivico() {
-        return numeroCivico;
-    }
-
-    public void setNumeroCivico(String numeroCivico) {
-        this.numeroCivico = numeroCivico;
     }
 
     public String getComune() {

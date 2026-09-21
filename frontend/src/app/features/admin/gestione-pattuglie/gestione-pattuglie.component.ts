@@ -1,8 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, debounceTime, distinctUntilChanged, switchMap, of, catchError } from 'rxjs';
-import { AdminService, Pattuglia, NuovoObiettivo, GiornoSettimana } from '../../../core/services/admin.service';
+import { AdminService, Pattuglia, PattugliaRicerca, NuovoObiettivo, GiornoSettimana, StatoAggiornamentoCoordinate, PropostaIndirizzo } from '../../../core/services/admin.service';
 import { Obiettivo } from '../../../core/services/pattuglia.service';
 
 interface GiornoOpzione {
@@ -15,7 +15,63 @@ interface GiornoOpzione {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <h1>Gestione Pattuglie e Obiettivi</h1>
+    <div class="intestazione-pagina">
+      <h1>Gestione Pattuglie e Obiettivi</h1>
+      <button type="button" class="btn-aggiorna-coordinate" (click)="aggiornaCoordinate()"
+              [disabled]="aggiornamentoInCorso">
+        {{ aggiornamentoInCorso ? 'Aggiornamento in corso…' : 'Aggiorna coordinate obiettivi' }}
+      </button>
+    </div>
+
+    <div class="pannello-coordinate" *ngIf="statoCoordinate && statoCoordinate.stato !== 'MAI_ESEGUITO'"
+         [class.errore]="statoCoordinate.stato === 'ERRORE'">
+      <ng-container *ngIf="statoCoordinate.stato === 'IN_CORSO'">
+        <strong>Aggiornamento coordinate in corso:</strong>
+        {{ statoCoordinate.elaborati }} / {{ statoCoordinate.totale }} obiettivi
+        <progress [value]="statoCoordinate.elaborati" [max]="statoCoordinate.totale"></progress>
+      </ng-container>
+      <ng-container *ngIf="statoCoordinate.stato !== 'IN_CORSO'">
+        <strong>{{ statoCoordinate.stato === 'ERRORE' ? 'Aggiornamento interrotto' : 'Aggiornamento coordinate completato' }}:</strong>
+        {{ statoCoordinate.aggiornati }} aggiornati su {{ statoCoordinate.totale }} obiettivi senza coordinate,
+        {{ statoCoordinate.proposte.length }} da confermare,
+        {{ statoCoordinate.nonTrovati.length }} indirizzi non trovati, {{ statoCoordinate.errori }} errori.
+        {{ statoCoordinate.giaConCoordinate }} obiettivi avevano già le coordinate e non sono stati toccati.
+        <span *ngIf="statoCoordinate.messaggio">{{ statoCoordinate.messaggio }}</span>
+        <button type="button" class="btn-chiudi" *ngIf="!statoCoordinate.proposte.length"
+                (click)="statoCoordinate = null">Chiudi</button>
+        <details *ngIf="statoCoordinate.nonTrovati.length">
+          <summary>Obiettivi con indirizzo non trovato (restano senza coordinate)</summary>
+          <ul>
+            <li *ngFor="let n of statoCoordinate.nonTrovati">{{ n }}</li>
+          </ul>
+        </details>
+      </ng-container>
+
+      <div class="proposte" *ngIf="statoCoordinate.proposte.length">
+        <div class="proposte-intestazione">
+          <strong>{{ statoCoordinate.proposte.length }} indirizzi da confermare</strong>
+          <span>La via inserita non corrisponde esattamente a quella trovata: controlla e conferma la correzione.</span>
+          <button type="button" (click)="confermaTutteLeProposte()">Conferma tutte</button>
+        </div>
+        <div class="proposta" *ngFor="let pr of statoCoordinate.proposte">
+          <div class="testo-proposta">
+            <strong>{{ pr.nome }}</strong> — {{ pr.comune }}<br />
+            Via inserita: <span class="via-errata">{{ pr.viaAttuale }}</span><br />
+            <ng-container *ngIf="pr.viaProposta; else soloCoordinate">
+              Via proposta: <span class="via-proposta">{{ pr.viaProposta }}</span>
+            </ng-container>
+            <ng-template #soloCoordinate>
+              Nessuna via riconosciuta: si aggiornano solo le coordinate del luogo trovato.
+            </ng-template>
+            <br /><small>Trovato: {{ pr.indirizzoTrovato }}</small>
+          </div>
+          <div class="azioni-proposta">
+            <button type="button" (click)="confermaProposta(pr)">Conferma</button>
+            <button type="button" class="secondario" (click)="scartaProposta(pr)">Scarta</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <p class="hint hint-top">
       Il prezzo del carburante usato per stimare il risparmio nell'ottimizzazione rotta è
@@ -35,12 +91,23 @@ interface GiornoOpzione {
 
     <p class="messaggio" *ngIf="messaggio">{{ messaggio }}</p>
 
+    <div class="barra-ricerca">
+      <input type="search" [(ngModel)]="ricerca" name="ricerca" (ngModelChange)="onRicercaCambiata()"
+             placeholder="Cerca pattuglia per nome, descrizione o nome di un obiettivo" />
+      <span class="conteggio">{{ totalePattuglie }} pattuglie trovate</span>
+    </div>
+
+    <p class="hint" *ngIf="caricato && pattuglie.length === 0">Nessuna pattuglia trovata.</p>
+
     <div class="lista-pattuglie">
       <div class="card-pattuglia" *ngFor="let p of pattuglie">
         <div class="intestazione" (click)="toggleEspansa(p.id)">
           <div>
             <h2>{{ p.nome }}</h2>
             <p>{{ p.descrizione }} — {{ p.tipoCarburante }}</p>
+            <p class="corrispondenze" *ngIf="p.obiettiviCorrispondenti.length">
+              Obiettivi trovati: {{ p.obiettiviCorrispondenti.join(', ') }}
+            </p>
           </div>
           <span [class.badge-attivo]="p.attiva" [class.badge-bloccato]="!p.attiva">
             {{ p.attiva ? 'Attiva' : 'Disattivata' }}
@@ -52,10 +119,12 @@ interface GiornoOpzione {
             {{ p.attiva ? 'Disattiva pattuglia' : 'Riattiva pattuglia' }}
           </button>
 
-          <h3>Obiettivi</h3>
+          <h3>Obiettivi ({{ totaleObiettivi }})</h3>
           <p class="hint" *ngIf="obiettivi.length === 0">Nessun obiettivo attivo per questa pattuglia.</p>
           <ul class="lista-obiettivi-admin" *ngIf="obiettivi.length > 0">
-            <li *ngFor="let o of obiettivi" [class.in-modifica]="obiettivoInModifica === o.id">
+            <li *ngFor="let o of obiettivi"
+                [class.in-modifica]="obiettivoInModifica === o.id"
+                [class.trovato]="corrispondeARicerca(o)">
               <div>
                 <strong>{{ o.nome }}</strong> — {{ o.indirizzo }}
                 <span class="telefono" *ngIf="o.telefonoRiferimento">· WhatsApp: +{{ o.telefonoRiferimento }}</span>
@@ -63,6 +132,11 @@ interface GiornoOpzione {
               <button type="button" (click)="modificaObiettivo(o)">Modifica</button>
             </li>
           </ul>
+          <div class="paginazione" *ngIf="totalePagineObiettivi > 1">
+            <button type="button" (click)="vaiAPaginaObiettivi(p.id, paginaObiettivi - 1)" [disabled]="paginaObiettivi === 0">« Precedente</button>
+            <span>Pagina {{ paginaObiettivi + 1 }} di {{ totalePagineObiettivi }}</span>
+            <button type="button" (click)="vaiAPaginaObiettivi(p.id, paginaObiettivi + 1)" [disabled]="paginaObiettivi >= totalePagineObiettivi - 1">Successiva »</button>
+          </div>
 
           <h3>{{ obiettivoInModifica ? 'Modifica obiettivo' : 'Aggiungi obiettivo' }}</h3>
           <form class="form-obiettivo" (ngSubmit)="salvaObiettivo(p.id)">
@@ -73,13 +147,6 @@ interface GiornoOpzione {
                 type="text" class="campo-via"
                 [(ngModel)]="nuovoObiettivo.via" name="via"
                 placeholder="Via"
-                (ngModelChange)="onIndirizzoCambiato()"
-                required
-              />
-              <input
-                type="text" class="campo-civico"
-                [(ngModel)]="nuovoObiettivo.numeroCivico" name="numeroCivico"
-                placeholder="N."
                 (ngModelChange)="onIndirizzoCambiato()"
                 required
               />
@@ -148,11 +215,26 @@ interface GiornoOpzione {
         </div>
       </div>
     </div>
+
+    <div class="paginazione" *ngIf="totalePagine > 1">
+      <button type="button" (click)="vaiAPagina(paginaPattuglie - 1)" [disabled]="paginaPattuglie === 0">« Precedente</button>
+      <span>Pagina {{ paginaPattuglie + 1 }} di {{ totalePagine }}</span>
+      <button type="button" (click)="vaiAPagina(paginaPattuglie + 1)" [disabled]="paginaPattuglie >= totalePagine - 1">Successiva »</button>
+    </div>
   `,
   styleUrls: ['./gestione-pattuglie.component.css']
 })
-export class GestionePattuglieComponent implements OnInit {
-  pattuglie: Pattuglia[] = [];
+export class GestionePattuglieComponent implements OnInit, OnDestroy {
+  statoCoordinate: StatoAggiornamentoCoordinate | null = null;
+  private timerCoordinate: ReturnType<typeof setInterval> | null = null;
+
+  pattuglie: PattugliaRicerca[] = [];
+  caricato = false; // vero dopo la prima risposta del server (evita di mostrare "nessuna pattuglia" durante il caricamento)
+  ricerca = '';
+  paginaPattuglie = 0;
+  totalePagine = 0;
+  totalePattuglie = 0;
+
   espansa: number | null = null;
   messaggio = '';
 
@@ -161,6 +243,9 @@ export class GestionePattuglieComponent implements OnInit {
   };
 
   obiettivi: Obiettivo[] = [];
+  paginaObiettivi = 0;
+  totalePagineObiettivi = 0;
+  totaleObiettivi = 0;
   obiettivoInModifica: number | null = null;
 
   nuovoObiettivo: NuovoObiettivo = this.obiettivoVuoto();
@@ -181,8 +266,14 @@ export class GestionePattuglieComponent implements OnInit {
   erroreGeocodifica = '';
 
   private indirizzoSubject = new Subject<string>();
+  private ricercaSubject = new Subject<void>();
 
   constructor(private adminService: AdminService) {
+    this.ricercaSubject.pipe(debounceTime(400)).subscribe(() => {
+      this.paginaPattuglie = 0;
+      this.carica();
+    });
+
     this.indirizzoSubject.pipe(
       debounceTime(600),
       distinctUntilChanged(),
@@ -214,11 +305,106 @@ export class GestionePattuglieComponent implements OnInit {
 
   ngOnInit(): void {
     this.carica();
+    // Se un aggiornamento era in corso o ha proposte ancora da confermare (es. pagina ricaricata) le si riprende.
+    this.adminService.statoAggiornamentoCoordinate().subscribe(stato => {
+      if (stato.stato === 'IN_CORSO' || stato.proposte.length > 0) {
+        this.statoCoordinate = stato;
+      }
+      if (stato.stato === 'IN_CORSO') {
+        this.monitoraAggiornamento();
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.fermaMonitoraggio();
+  }
+
+  get aggiornamentoInCorso(): boolean {
+    return this.statoCoordinate?.stato === 'IN_CORSO';
+  }
+
+  aggiornaCoordinate(): void {
+    const conferma = confirm(
+      'Verranno calcolate, a partire dall\'indirizzo, le coordinate degli obiettivi attivi che ne sono privi.\n\n' +
+      'Gli obiettivi che hanno già le coordinate non vengono modificati. Con molti obiettivi l\'operazione può richiedere alcuni minuti.\n\n' +
+      'Vuoi continuare?');
+    if (!conferma) {
+      return;
+    }
+    this.messaggio = '';
+    this.adminService.avviaAggiornamentoCoordinate().subscribe({
+      next: stato => {
+        this.statoCoordinate = stato;
+        if (stato.stato === 'IN_CORSO') {
+          this.monitoraAggiornamento();
+        }
+      },
+      error: err => this.messaggio = err?.error?.errore ?? 'Errore durante l\'avvio dell\'aggiornamento delle coordinate.'
+    });
+  }
+
+  confermaProposta(proposta: PropostaIndirizzo): void {
+    this.adminService.confermaPropostaIndirizzo(proposta.obiettivoId).subscribe({
+      next: stato => this.dopoConfermaProposte(stato),
+      error: err => this.messaggio = err?.error?.errore ?? 'Errore durante la conferma dell\'indirizzo.'
+    });
+  }
+
+  scartaProposta(proposta: PropostaIndirizzo): void {
+    this.adminService.scartaPropostaIndirizzo(proposta.obiettivoId).subscribe({
+      next: stato => this.statoCoordinate = stato,
+      error: err => this.messaggio = err?.error?.errore ?? 'Errore durante lo scarto della proposta.'
+    });
+  }
+
+  confermaTutteLeProposte(): void {
+    const n = this.statoCoordinate?.proposte.length ?? 0;
+    if (!confirm(`Confermare tutte le ${n} correzioni proposte? Le vie verranno sostituite con quelle trovate.`)) {
+      return;
+    }
+    this.adminService.confermaTutteLeProposte().subscribe({
+      next: stato => this.dopoConfermaProposte(stato),
+      error: err => this.messaggio = err?.error?.errore ?? 'Errore durante la conferma degli indirizzi.'
+    });
+  }
+
+  private dopoConfermaProposte(stato: StatoAggiornamentoCoordinate): void {
+    this.statoCoordinate = stato;
+    if (this.espansa !== null) {
+      this.caricaObiettivi(this.espansa); // mostra vie e coordinate aggiornate
+    }
+  }
+
+  /** Interroga il server ogni 2 secondi finché l'aggiornamento non termina. */
+  private monitoraAggiornamento(): void {
+    this.fermaMonitoraggio();
+    this.timerCoordinate = setInterval(() => {
+      this.adminService.statoAggiornamentoCoordinate().subscribe({
+        next: stato => {
+          this.statoCoordinate = stato;
+          if (stato.stato !== 'IN_CORSO') {
+            this.fermaMonitoraggio();
+            if (this.espansa !== null) {
+              this.caricaObiettivi(this.espansa); // mostra le coordinate aggiornate
+            }
+          }
+        },
+        error: () => this.fermaMonitoraggio()
+      });
+    }, 2000);
+  }
+
+  private fermaMonitoraggio(): void {
+    if (this.timerCoordinate !== null) {
+      clearInterval(this.timerCoordinate);
+      this.timerCoordinate = null;
+    }
   }
 
   private obiettivoVuoto(): NuovoObiettivo {
     return {
-      nome: '', via: '', numeroCivico: '', comune: '',
+      nome: '', via: '', comune: '',
       latitudine: 0, longitudine: 0, priorita: false,
       giorniAttivi: [], oraInizio: null, oraFine: null, ripetizioniGiornaliere: 1,
       telefonoRiferimento: null
@@ -228,8 +414,8 @@ export class GestionePattuglieComponent implements OnInit {
   onIndirizzoCambiato(): void {
     this.coordinateTrovate = false;
     this.erroreGeocodifica = '';
-    const { via, numeroCivico, comune } = this.nuovoObiettivo;
-    const indirizzoCompleto = [via, numeroCivico, comune].filter(v => v && v.trim()).join(' ');
+    const { via, comune } = this.nuovoObiettivo;
+    const indirizzoCompleto = [via, comune].filter(v => v && v.trim()).join(' ');
     this.indirizzoSubject.next(indirizzoCompleto);
   }
 
@@ -248,12 +434,40 @@ export class GestionePattuglieComponent implements OnInit {
   }
 
   carica(): void {
-    this.adminService.listaPattuglie().subscribe(p => this.pattuglie = p);
+    this.adminService.cercaPattuglie(this.ricerca.trim(), this.paginaPattuglie).subscribe(risultato => {
+      // Se la pagina richiesta non esiste più (es. dopo una nuova ricerca), si torna all'ultima disponibile.
+      if (risultato.contenuto.length === 0 && risultato.totalePagine > 0 && this.paginaPattuglie > 0) {
+        this.paginaPattuglie = risultato.totalePagine - 1;
+        this.carica();
+        return;
+      }
+      this.pattuglie = risultato.contenuto;
+      this.totalePagine = risultato.totalePagine;
+      this.totalePattuglie = risultato.totaleElementi;
+      this.caricato = true;
+    }, err => {
+      this.pattuglie = [];
+      this.totalePagine = 0;
+      this.totalePattuglie = 0;
+      this.messaggio = err?.error?.errore ?? 'Errore durante il caricamento delle pattuglie.';
+    });
+  }
+
+  onRicercaCambiata(): void {
+    this.ricercaSubject.next();
+  }
+
+  vaiAPagina(pagina: number): void {
+    this.paginaPattuglie = Math.max(0, Math.min(pagina, this.totalePagine - 1));
+    this.carica();
   }
 
   toggleEspansa(id: number): void {
     this.espansa = this.espansa === id ? null : id;
     this.obiettivi = [];
+    this.paginaObiettivi = 0;
+    this.totalePagineObiettivi = 0;
+    this.totaleObiettivi = 0;
     this.annullaModifica();
     if (this.espansa !== null) {
       this.caricaObiettivi(this.espansa);
@@ -261,7 +475,22 @@ export class GestionePattuglieComponent implements OnInit {
   }
 
   private caricaObiettivi(pattugliaId: number): void {
-    this.adminService.listaObiettivi(pattugliaId).subscribe(o => this.obiettivi = o);
+    this.adminService.listaObiettivi(pattugliaId, this.paginaObiettivi).subscribe(risultato => {
+      this.obiettivi = risultato.contenuto;
+      this.totalePagineObiettivi = risultato.totalePagine;
+      this.totaleObiettivi = risultato.totaleElementi;
+    });
+  }
+
+  vaiAPaginaObiettivi(pattugliaId: number, pagina: number): void {
+    this.paginaObiettivi = Math.max(0, Math.min(pagina, this.totalePagineObiettivi - 1));
+    this.caricaObiettivi(pattugliaId);
+  }
+
+  /** Vero se il nome dell'obiettivo contiene il testo cercato (per evidenziarlo nell'elenco). */
+  corrispondeARicerca(o: Obiettivo): boolean {
+    const testo = this.ricerca.trim().toLowerCase();
+    return testo !== '' && o.nome.toLowerCase().includes(testo);
   }
 
   /** Porta i dati dell'obiettivo nel form, per modificarli. Le coordinate esistenti restano valide finché non si cambia l'indirizzo. */
@@ -269,7 +498,7 @@ export class GestionePattuglieComponent implements OnInit {
     this.messaggio = '';
     this.obiettivoInModifica = o.id;
     this.nuovoObiettivo = {
-      nome: o.nome, via: o.via, numeroCivico: o.numeroCivico, comune: o.comune,
+      nome: o.nome, via: o.via, comune: o.comune,
       latitudine: o.latitudine, longitudine: o.longitudine, priorita: o.priorita,
       giorniAttivi: [...o.giorniAttivi] as GiornoSettimana[],
       oraInizio: o.oraInizio ? o.oraInizio.substring(0, 5) : null,
@@ -299,6 +528,9 @@ export class GestionePattuglieComponent implements OnInit {
       next: () => {
         this.messaggio = 'Pattuglia creata con successo.';
         this.nuovaPattuglia = { nome: '', descrizione: '', tipoCarburante: 'BENZINA' };
+        // La nuova pattuglia potrebbe non corrispondere alla ricerca in corso: si riparte dall'elenco completo.
+        this.ricerca = '';
+        this.paginaPattuglie = 0;
         this.carica();
       },
       error: () => this.messaggio = 'Errore durante la creazione della pattuglia.'

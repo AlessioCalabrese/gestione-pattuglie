@@ -61,7 +61,6 @@ CREATE TABLE obiettivo (
                            pattuglia_id            BIGINT NOT NULL,
                            nome                    VARCHAR(150) NOT NULL,
                            via                     VARCHAR(150) NOT NULL,
-                           numero_civico           VARCHAR(20) NOT NULL,
                            comune                  VARCHAR(100) NOT NULL,
                            latitudine              DECIMAL(10, 7) NOT NULL,
                            longitudine             DECIMAL(10, 7) NOT NULL,

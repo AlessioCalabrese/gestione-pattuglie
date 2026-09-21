@@ -17,8 +17,8 @@ public class JwtUtil {
     @Value("${app.security.jwt-secret}")
     private String secretConfigurato;
 
-    @Value("${app.security.jwt-expiration-minutes:28800000}") // default 8 ore
-    private long scadenzaMs;
+    @Value("${app.security.jwt-expiration-minutes:480}") // default 8 ore
+    private long scadenzaMinuti;
 
     // Blacklist in-memory dei token invalidati al logout.
     // In un deployment multi-istanza, sostituire con Redis o una tabella su DB.
@@ -30,7 +30,7 @@ public class JwtUtil {
 
     public String generaToken(Long utenteId, String username, String ruolo) {
         Date now = new Date();
-        Date scadenza = new Date(now.getTime() + scadenzaMs);
+        Date scadenza = new Date(now.getTime() + scadenzaMinuti * 60_000L);
 
         return Jwts.builder()
                 .subject(username)

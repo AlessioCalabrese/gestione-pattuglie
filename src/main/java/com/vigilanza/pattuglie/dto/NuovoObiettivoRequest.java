@@ -10,7 +10,6 @@ public class NuovoObiettivoRequest {
 
     private String nome;
     private String via;
-    private String numeroCivico;
     private String comune;
     private BigDecimal latitudine;
     private BigDecimal longitudine;
@@ -54,14 +53,6 @@ public class NuovoObiettivoRequest {
 
     public void setVia(String via) {
         this.via = via;
-    }
-
-    public String getNumeroCivico() {
-        return numeroCivico;
-    }
-
-    public void setNumeroCivico(String numeroCivico) {
-        this.numeroCivico = numeroCivico;
     }
 
     public String getComune() {
