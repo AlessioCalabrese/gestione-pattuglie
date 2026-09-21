@@ -115,4 +115,3 @@ application-secret*.properties
 *.mdf
 *.ldf
 *.dump
-/frontend/package-lock.json
