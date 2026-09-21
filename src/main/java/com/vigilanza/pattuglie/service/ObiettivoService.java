@@ -11,8 +11,6 @@ import com.vigilanza.pattuglie.repository.PattugliaRepository;
 import com.vigilanza.pattuglie.repository.UtenteRepository;
 import org.springframework.stereotype.Service;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -33,10 +31,9 @@ public class ObiettivoService {
     private final RouteOptimizerService routeOptimizerService;
     private final LogSistemaService logSistemaService;
     private final FuelPriceService fuelPriceService;
+    private final WhatsappMessageService whatsappMessageService;
 
     private static final DateTimeFormatter FORMATO_ORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-    private static final DateTimeFormatter FORMATO_DATA_MESSAGGIO = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final DateTimeFormatter FORMATO_ORA_MESSAGGIO = DateTimeFormatter.ofPattern("HH:mm");
 
     public ObiettivoService(ObiettivoRepository obiettivoRepository,
                              ObiettivoFlagRepository obiettivoFlagRepository,
@@ -44,7 +41,8 @@ public class ObiettivoService {
                              UtenteRepository utenteRepository,
                              RouteOptimizerService routeOptimizerService,
                              LogSistemaService logSistemaService,
-                             FuelPriceService fuelPriceService) {
+                             FuelPriceService fuelPriceService,
+                             WhatsappMessageService whatsappMessageService) {
         this.obiettivoRepository = obiettivoRepository;
         this.obiettivoFlagRepository = obiettivoFlagRepository;
         this.pattugliaRepository = pattugliaRepository;
@@ -52,6 +50,7 @@ public class ObiettivoService {
         this.routeOptimizerService = routeOptimizerService;
         this.logSistemaService = logSistemaService;
         this.fuelPriceService = fuelPriceService;
+        this.whatsappMessageService = whatsappMessageService;
     }
 
     public List<ObiettivoDTO> findByPattuglia(Long pattugliaId) {
@@ -109,7 +108,7 @@ public class ObiettivoService {
         obiettivo.setLatitudine(request.getLatitudine());
         obiettivo.setLongitudine(request.getLongitudine());
         obiettivo.setPriorita(request.isPriorita());
-        obiettivo.setTelefonoRiferimento(normalizzaTelefono(request.getTelefonoRiferimento()));
+        obiettivo.setTelefonoRiferimento(whatsappMessageService.normalizzaTelefono(request.getTelefonoRiferimento()));
 
         obiettivo.getGiorniAttivi().clear();
         obiettivo.getGiorniAttivi().addAll(request.getGiorniAttivi());
@@ -279,43 +278,10 @@ public class ObiettivoService {
 
         dto.setTelefonoRiferimento(o.getTelefonoRiferimento());
         if (o.getTelefonoRiferimento() != null) {
-            ultimo.ifPresent(f -> dto.setWhatsappUrl(costruisciLinkWhatsapp(o, f.getDataOra())));
+            ultimo.ifPresent(f -> dto.setWhatsappUrl(
+                    whatsappMessageService.linkCheck(o.getTelefonoRiferimento(), o.getNome(), f.getDataOra())));
         }
 
         return dto;
-    }
-
-    /**
-     * Porta il numero inserito dall'amministratore in formato internazionale di sole cifre
-     * (quello richiesto da wa.me). Accetta spazi, punti, trattini, "+39", "0039" e i cellulari
-     * italiani scritti senza prefisso. Vuoto = nessun telefono (null).
-     */
-    static String normalizzaTelefono(String grezzo) {
-        if (grezzo == null || grezzo.isBlank()) {
-            return null;
-        }
-        String cifre = grezzo.replaceAll("[\\s.\\-()/]", "");
-        if (cifre.startsWith("+")) {
-            cifre = cifre.substring(1);
-        } else if (cifre.startsWith("00")) {
-            cifre = cifre.substring(2);
-        } else if (cifre.startsWith("3") && (cifre.length() == 9 || cifre.length() == 10)) {
-            cifre = "39" + cifre; // cellulare italiano senza prefisso
-        }
-        if (!cifre.matches("\\d{8,15}") || cifre.startsWith("0")) {
-            throw new IllegalArgumentException(
-                    "Numero di telefono non valido: inserisci un cellulare, con prefisso internazionale se non italiano (es. +39 333 1234567).");
-        }
-        return cifre;
-    }
-
-    /** Link "click to chat" con il messaggio per l'obiettivo, che la pattuglia invia dal proprio WhatsApp. */
-    private String costruisciLinkWhatsapp(Obiettivo o, LocalDateTime oraCheck) {
-        String messaggio = "Gentile cliente, la informiamo che la pattuglia COSMOPOL ha effettuato il controllo presso "
-                + o.getNome() + " il " + oraCheck.format(FORMATO_DATA_MESSAGGIO)
-                + " alle ore " + oraCheck.format(FORMATO_ORA_MESSAGGIO) + ". "
-                + "La ringraziamo per aver scelto il servizio COSMOPOL.";
-        return "https://wa.me/" + o.getTelefonoRiferimento()
-                + "?text=" + URLEncoder.encode(messaggio, StandardCharsets.UTF_8).replace("+", "%20");
     }
 }
