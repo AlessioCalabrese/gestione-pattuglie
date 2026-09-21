@@ -11,6 +11,8 @@ import com.vigilanza.pattuglie.repository.PattugliaRepository;
 import com.vigilanza.pattuglie.repository.UtenteRepository;
 import org.springframework.stereotype.Service;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -33,6 +35,8 @@ public class ObiettivoService {
     private final FuelPriceService fuelPriceService;
 
     private static final DateTimeFormatter FORMATO_ORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+    private static final DateTimeFormatter FORMATO_DATA_MESSAGGIO = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter FORMATO_ORA_MESSAGGIO = DateTimeFormatter.ofPattern("HH:mm");
 
     public ObiettivoService(ObiettivoRepository obiettivoRepository,
                              ObiettivoFlagRepository obiettivoFlagRepository,
@@ -69,23 +73,51 @@ public class ObiettivoService {
         Pattuglia pattuglia = pattugliaRepository.findById(pattugliaId)
                 .orElseThrow(() -> new IllegalArgumentException("Pattuglia non trovata"));
 
+        Obiettivo obiettivo = new Obiettivo();
+        obiettivo.setPattuglia(pattuglia);
+        applicaRichiesta(obiettivo, request);
+
+        return obiettivoRepository.save(obiettivo);
+    }
+
+    /** Tutti gli obiettivi attivi della pattuglia, indipendentemente dai giorni di servizio (vista amministratore). */
+    public List<ObiettivoDTO> findPerAdmin(Long pattugliaId) {
+        return obiettivoRepository.findByPattugliaIdAndAttivoTrueOrderByOrdineVisitaAsc(pattugliaId).stream()
+                .map(this::toDtoConStatoFlag)
+                .toList();
+    }
+
+    /** Aggiorna i dati di un obiettivo esistente (indirizzo, pianificazione, telefono...). Lo storico dei flag resta invariato. */
+    public Obiettivo aggiorna(Long obiettivoId, NuovoObiettivoRequest request) {
+        Obiettivo obiettivo = obiettivoRepository.findById(obiettivoId)
+                .orElseThrow(() -> new IllegalArgumentException("Obiettivo non trovato"));
+        applicaRichiesta(obiettivo, request);
+        return obiettivoRepository.save(obiettivo);
+    }
+
+    /** Copia sull'obiettivo i campi modificabili della richiesta, validandoli (usata da creazione e modifica). */
+    private void applicaRichiesta(Obiettivo obiettivo, NuovoObiettivoRequest request) {
         if (request.getGiorniAttivi() == null || request.getGiorniAttivi().isEmpty()) {
             throw new IllegalArgumentException(
                     "Seleziona almeno un giorno di servizio: un obiettivo senza giorni configurati non sarebbe mai visibile alle pattuglie.");
         }
 
-        Obiettivo obiettivo = new Obiettivo(pattuglia, request.getNome(), request.getVia(),
-                request.getNumeroCivico(), request.getComune(), request.getLatitudine(), request.getLongitudine());
+        obiettivo.setNome(request.getNome());
+        obiettivo.setVia(request.getVia());
+        obiettivo.setNumeroCivico(request.getNumeroCivico());
+        obiettivo.setComune(request.getComune());
+        obiettivo.setLatitudine(request.getLatitudine());
+        obiettivo.setLongitudine(request.getLongitudine());
         obiettivo.setPriorita(request.isPriorita());
+        obiettivo.setTelefonoRiferimento(normalizzaTelefono(request.getTelefonoRiferimento()));
 
-        obiettivo.setGiorniAttivi(new java.util.HashSet<>(request.getGiorniAttivi()));
+        obiettivo.getGiorniAttivi().clear();
+        obiettivo.getGiorniAttivi().addAll(request.getGiorniAttivi());
         obiettivo.setOraInizio(request.getOraInizio());
         obiettivo.setOraFine(request.getOraFine());
         if (request.getRipetizioniGiornaliere() != null && request.getRipetizioniGiornaliere() > 0) {
             obiettivo.setRipetizioniGiornaliere(request.getRipetizioniGiornaliere());
         }
-
-        return obiettivoRepository.save(obiettivo);
     }
 
     /**
@@ -245,6 +277,45 @@ public class ObiettivoService {
                 .max((a, b) -> a.getDataOra().compareTo(b.getDataOra()));
         ultimo.ifPresent(f -> dto.setUltimoFlagDataOra(f.getDataOra().format(FORMATO_ORA)));
 
+        dto.setTelefonoRiferimento(o.getTelefonoRiferimento());
+        if (o.getTelefonoRiferimento() != null) {
+            ultimo.ifPresent(f -> dto.setWhatsappUrl(costruisciLinkWhatsapp(o, f.getDataOra())));
+        }
+
         return dto;
+    }
+
+    /**
+     * Porta il numero inserito dall'amministratore in formato internazionale di sole cifre
+     * (quello richiesto da wa.me). Accetta spazi, punti, trattini, "+39", "0039" e i cellulari
+     * italiani scritti senza prefisso. Vuoto = nessun telefono (null).
+     */
+    static String normalizzaTelefono(String grezzo) {
+        if (grezzo == null || grezzo.isBlank()) {
+            return null;
+        }
+        String cifre = grezzo.replaceAll("[\\s.\\-()/]", "");
+        if (cifre.startsWith("+")) {
+            cifre = cifre.substring(1);
+        } else if (cifre.startsWith("00")) {
+            cifre = cifre.substring(2);
+        } else if (cifre.startsWith("3") && (cifre.length() == 9 || cifre.length() == 10)) {
+            cifre = "39" + cifre; // cellulare italiano senza prefisso
+        }
+        if (!cifre.matches("\\d{8,15}") || cifre.startsWith("0")) {
+            throw new IllegalArgumentException(
+                    "Numero di telefono non valido: inserisci un cellulare, con prefisso internazionale se non italiano (es. +39 333 1234567).");
+        }
+        return cifre;
+    }
+
+    /** Link "click to chat" con il messaggio per l'obiettivo, che la pattuglia invia dal proprio WhatsApp. */
+    private String costruisciLinkWhatsapp(Obiettivo o, LocalDateTime oraCheck) {
+        String messaggio = "Gentile cliente, la informiamo che la pattuglia COSMOPOL ha effettuato il controllo presso "
+                + o.getNome() + " il " + oraCheck.format(FORMATO_DATA_MESSAGGIO)
+                + " alle ore " + oraCheck.format(FORMATO_ORA_MESSAGGIO) + ". "
+                + "La ringraziamo per aver scelto il servizio COSMOPOL.";
+        return "https://wa.me/" + o.getTelefonoRiferimento()
+                + "?text=" + URLEncoder.encode(messaggio, StandardCharsets.UTF_8).replace("+", "%20");
     }
 }

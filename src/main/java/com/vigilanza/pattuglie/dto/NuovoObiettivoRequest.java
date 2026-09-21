@@ -26,7 +26,18 @@ public class NuovoObiettivoRequest {
     /** Quante volte va flaggato nella giornata/fascia oraria. Default 1. */
     private Integer ripetizioniGiornaliere;
 
+    /** Cellulare di riferimento per l'avviso WhatsApp (opzionale). Accetta anche spazi e prefisso +39. */
+    private String telefonoRiferimento;
+
     public NuovoObiettivoRequest() {
+    }
+
+    public String getTelefonoRiferimento() {
+        return telefonoRiferimento;
+    }
+
+    public void setTelefonoRiferimento(String telefonoRiferimento) {
+        this.telefonoRiferimento = telefonoRiferimento;
     }
 
     public String getNome() {

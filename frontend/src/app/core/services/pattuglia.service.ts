@@ -26,6 +26,8 @@ export interface Obiettivo {
   oraInizio: string | null;
   oraFine: string | null;
   ripetizioniGiornaliere: number;
+  telefonoRiferimento: string | null;
+  whatsappUrl: string | null; // presente solo se c'è un telefono e un flag oggi
   flaggatoOggi: boolean | null;
   ultimoFlagDataOra: string | null;
   numeroFlagOggi: number;

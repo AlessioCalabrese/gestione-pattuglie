@@ -66,7 +66,8 @@ CREATE TABLE obiettivo (
                            latitudine              DECIMAL(10, 7) NOT NULL,
                            longitudine             DECIMAL(10, 7) NOT NULL,
                            priorita                BIT NOT NULL DEFAULT 0,
-                           ora_inizio              TIME,
+                           telefono_riferimento    VARCHAR(20), -- cellulare in formato internazionale, sole cifre (es. 393331234567)
+                           ora_inizio             TIME,
                            ora_fine                TIME,
                            ripetizioni_giornaliere INT NOT NULL DEFAULT 1,
                            ordine_visita           INT,

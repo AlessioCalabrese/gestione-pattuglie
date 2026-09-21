@@ -29,6 +29,10 @@ public class ObiettivoDTO {
     private LocalTime oraFine;
     private int ripetizioniGiornaliere;
 
+    private String telefonoRiferimento;
+    /** Link wa.me con il messaggio di avvenuto check già compilato; valorizzato solo se c'è un telefono e un flag oggi. */
+    private String whatsappUrl;
+
     // Stato calcolato lato servizio
     private Boolean flaggatoOggi;
     private String ultimoFlagDataOra;
@@ -181,6 +185,22 @@ public class ObiettivoDTO {
 
     public void setRipetizioniGiornaliere(int ripetizioniGiornaliere) {
         this.ripetizioniGiornaliere = ripetizioniGiornaliere;
+    }
+
+    public String getTelefonoRiferimento() {
+        return telefonoRiferimento;
+    }
+
+    public void setTelefonoRiferimento(String telefonoRiferimento) {
+        this.telefonoRiferimento = telefonoRiferimento;
+    }
+
+    public String getWhatsappUrl() {
+        return whatsappUrl;
+    }
+
+    public void setWhatsappUrl(String whatsappUrl) {
+        this.whatsappUrl = whatsappUrl;
     }
 
     public Boolean getFlaggatoOggi() {

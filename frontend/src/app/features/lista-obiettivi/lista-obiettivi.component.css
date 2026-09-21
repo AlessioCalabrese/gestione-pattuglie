@@ -221,6 +221,17 @@ h1 {
   flex-shrink: 0;
 }
 
+.btn-whatsapp {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 8px 14px;
+  background: #25d366;
+  color: #fff;
+  border-radius: 6px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
 .btn-flag:disabled {
   opacity: 0.6;
   cursor: not-allowed;

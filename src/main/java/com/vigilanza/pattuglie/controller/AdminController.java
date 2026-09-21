@@ -1,6 +1,7 @@
 package com.vigilanza.pattuglie.controller;
 
 import com.vigilanza.pattuglie.dto.GeocodificaResponse;
+import com.vigilanza.pattuglie.dto.ObiettivoDTO;
 import com.vigilanza.pattuglie.dto.PattugliaDTO;
 import com.vigilanza.pattuglie.dto.UtenteDTO;
 import com.vigilanza.pattuglie.entity.RuoloUtente;
@@ -95,6 +96,18 @@ public class AdminController {
     }
 
     // ---- Obiettivi ----
+
+    @GetMapping("/pattuglie/{pattugliaId}/obiettivi")
+    public List<ObiettivoDTO> listaObiettivi(@PathVariable Long pattugliaId) {
+        return obiettivoService.findPerAdmin(pattugliaId);
+    }
+
+    @PutMapping("/obiettivi/{id}")
+    public ResponseEntity<?> aggiornaObiettivo(@PathVariable Long id,
+                                                @RequestBody com.vigilanza.pattuglie.dto.NuovoObiettivoRequest request) {
+        var obiettivo = obiettivoService.aggiorna(id, request);
+        return ResponseEntity.ok(Map.of("id", obiettivo.getId()));
+    }
 
     @PostMapping("/pattuglie/{pattugliaId}/obiettivi")
     public ResponseEntity<?> creaObiettivo(@PathVariable Long pattugliaId,

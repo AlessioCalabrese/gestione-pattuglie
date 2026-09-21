@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { Obiettivo } from './pattuglia.service';
 
 export interface Utente {
   id: number;
@@ -43,6 +44,7 @@ export interface NuovoObiettivo {
   oraInizio: string | null;          // formato "HH:mm", null = nessun vincolo
   oraFine: string | null;
   ripetizioniGiornaliere: number;
+  telefonoRiferimento: string | null; // cellulare per l'avviso WhatsApp dopo il flag, opzionale
 }
 
 export interface GeocodificaResult {
@@ -94,6 +96,14 @@ export class AdminService {
 
   creaObiettivo(pattugliaId: number, obiettivo: NuovoObiettivo): Observable<{ id: number }> {
     return this.http.post<{ id: number }>(`/api/admin/pattuglie/${pattugliaId}/obiettivi`, obiettivo);
+  }
+
+  listaObiettivi(pattugliaId: number): Observable<Obiettivo[]> {
+    return this.http.get<Obiettivo[]>(`/api/admin/pattuglie/${pattugliaId}/obiettivi`);
+  }
+
+  aggiornaObiettivo(obiettivoId: number, obiettivo: NuovoObiettivo): Observable<{ id: number }> {
+    return this.http.put<{ id: number }>(`/api/admin/obiettivi/${obiettivoId}`, obiettivo);
   }
 
   // ---- Geocodifica ----

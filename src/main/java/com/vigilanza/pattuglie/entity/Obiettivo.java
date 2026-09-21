@@ -59,6 +59,13 @@ public class Obiettivo {
     @Column(name = "ripetizioni_giornaliere", nullable = false)
     private int ripetizioniGiornaliere = 1; // quante volte va flaggato nella giornata/fascia
 
+    /**
+     * Cellulare di riferimento dell'obiettivo, in formato internazionale di sole cifre
+     * (es. 393331234567). Se presente, dopo il flag la pattuglia può avvisare l'obiettivo via WhatsApp.
+     */
+    @Column(name = "telefono_riferimento", length = 20)
+    private String telefonoRiferimento;
+
     @Column(nullable = false)
     private boolean attivo = true;
 
@@ -211,6 +218,14 @@ public class Obiettivo {
 
     public void setRipetizioniGiornaliere(int ripetizioniGiornaliere) {
         this.ripetizioniGiornaliere = ripetizioniGiornaliere;
+    }
+
+    public String getTelefonoRiferimento() {
+        return telefonoRiferimento;
+    }
+
+    public void setTelefonoRiferimento(String telefonoRiferimento) {
+        this.telefonoRiferimento = telefonoRiferimento;
     }
 
     public boolean isAttivo() {

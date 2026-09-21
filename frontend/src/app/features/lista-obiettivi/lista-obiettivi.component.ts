@@ -77,6 +77,9 @@ import { AuthService } from '../../core/services/auth.service';
               {{ o.numeroFlagOggi }}/{{ o.ripetizioniGiornaliere }} completati oggi
               <ng-container *ngIf="o.ultimoFlagDataOra"> — ultimo: {{ o.ultimoFlagDataOra }}</ng-container>
             </span>
+            <a class="btn-whatsapp" *ngIf="o.whatsappUrl" [href]="o.whatsappUrl" target="_blank" rel="noopener">
+              Avvisa su WhatsApp
+            </a>
           </div>
           <button class="btn-flag" (click)="flagObiettivo(o)" [disabled]="flaggando === o.id">
             {{ flaggando === o.id ? '...' : 'Flag' }}

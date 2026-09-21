@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, debounceTime, distinctUntilChanged, switchMap, of, catchError } from 'rxjs';
 import { AdminService, Pattuglia, NuovoObiettivo, GiornoSettimana } from '../../../core/services/admin.service';
+import { Obiettivo } from '../../../core/services/pattuglia.service';
 
 interface GiornoOpzione {
   valore: GiornoSettimana;
@@ -51,8 +52,20 @@ interface GiornoOpzione {
             {{ p.attiva ? 'Disattiva pattuglia' : 'Riattiva pattuglia' }}
           </button>
 
-          <h3>Aggiungi obiettivo</h3>
-          <form class="form-obiettivo" (ngSubmit)="creaObiettivo(p.id)">
+          <h3>Obiettivi</h3>
+          <p class="hint" *ngIf="obiettivi.length === 0">Nessun obiettivo attivo per questa pattuglia.</p>
+          <ul class="lista-obiettivi-admin" *ngIf="obiettivi.length > 0">
+            <li *ngFor="let o of obiettivi" [class.in-modifica]="obiettivoInModifica === o.id">
+              <div>
+                <strong>{{ o.nome }}</strong> — {{ o.indirizzo }}
+                <span class="telefono" *ngIf="o.telefonoRiferimento">· WhatsApp: +{{ o.telefonoRiferimento }}</span>
+              </div>
+              <button type="button" (click)="modificaObiettivo(o)">Modifica</button>
+            </li>
+          </ul>
+
+          <h3>{{ obiettivoInModifica ? 'Modifica obiettivo' : 'Aggiungi obiettivo' }}</h3>
+          <form class="form-obiettivo" (ngSubmit)="salvaObiettivo(p.id)">
             <input type="text" [(ngModel)]="nuovoObiettivo.nome" name="nomeObiettivo" placeholder="Nome obiettivo" required />
 
             <div class="riga-indirizzo">
@@ -79,6 +92,9 @@ interface GiornoOpzione {
               />
             </div>
 
+            <input type="tel" [(ngModel)]="nuovoObiettivo.telefonoRiferimento" name="telefonoRiferimento"
+                   placeholder="Cellulare di riferimento per avviso WhatsApp (opzionale, es. +39 333 1234567)" />
+
             <label class="checkbox-priorita">
               <input type="checkbox" [(ngModel)]="nuovoObiettivo.priorita" name="priorita" />
               Priorità alta (visitato per primo nel percorso ottimizzato)
@@ -104,7 +120,10 @@ interface GiornoOpzione {
               <input type="number" min="1" [(ngModel)]="nuovoObiettivo.ripetizioniGiornaliere" name="ripetizioniGiornaliere" class="campo-ripetizioni" />
             </div>
 
-            <button type="submit" [disabled]="!coordinateTrovate || nuovoObiettivo.giorniAttivi.length === 0">Aggiungi obiettivo</button>
+            <button type="submit" [disabled]="!coordinateTrovate || nuovoObiettivo.giorniAttivi.length === 0">
+              {{ obiettivoInModifica ? 'Salva modifiche' : 'Aggiungi obiettivo' }}
+            </button>
+            <button type="button" *ngIf="obiettivoInModifica" (click)="annullaModifica()">Annulla modifica</button>
             <p class="avviso-validazione" *ngIf="coordinateTrovate && nuovoObiettivo.giorniAttivi.length === 0">
               Seleziona almeno un giorno di servizio per poter salvare l'obiettivo.
             </p>
@@ -140,6 +159,9 @@ export class GestionePattuglieComponent implements OnInit {
   nuovaPattuglia: { nome: string; descrizione: string; tipoCarburante: 'BENZINA' | 'GASOLIO' } = {
     nome: '', descrizione: '', tipoCarburante: 'BENZINA'
   };
+
+  obiettivi: Obiettivo[] = [];
+  obiettivoInModifica: number | null = null;
 
   nuovoObiettivo: NuovoObiettivo = this.obiettivoVuoto();
 
@@ -198,7 +220,8 @@ export class GestionePattuglieComponent implements OnInit {
     return {
       nome: '', via: '', numeroCivico: '', comune: '',
       latitudine: 0, longitudine: 0, priorita: false,
-      giorniAttivi: [], oraInizio: null, oraFine: null, ripetizioniGiornaliere: 1
+      giorniAttivi: [], oraInizio: null, oraFine: null, ripetizioniGiornaliere: 1,
+      telefonoRiferimento: null
     };
   }
 
@@ -230,6 +253,43 @@ export class GestionePattuglieComponent implements OnInit {
 
   toggleEspansa(id: number): void {
     this.espansa = this.espansa === id ? null : id;
+    this.obiettivi = [];
+    this.annullaModifica();
+    if (this.espansa !== null) {
+      this.caricaObiettivi(this.espansa);
+    }
+  }
+
+  private caricaObiettivi(pattugliaId: number): void {
+    this.adminService.listaObiettivi(pattugliaId).subscribe(o => this.obiettivi = o);
+  }
+
+  /** Porta i dati dell'obiettivo nel form, per modificarli. Le coordinate esistenti restano valide finché non si cambia l'indirizzo. */
+  modificaObiettivo(o: Obiettivo): void {
+    this.messaggio = '';
+    this.obiettivoInModifica = o.id;
+    this.nuovoObiettivo = {
+      nome: o.nome, via: o.via, numeroCivico: o.numeroCivico, comune: o.comune,
+      latitudine: o.latitudine, longitudine: o.longitudine, priorita: o.priorita,
+      giorniAttivi: [...o.giorniAttivi] as GiornoSettimana[],
+      oraInizio: o.oraInizio ? o.oraInizio.substring(0, 5) : null,
+      oraFine: o.oraFine ? o.oraFine.substring(0, 5) : null,
+      ripetizioniGiornaliere: o.ripetizioniGiornaliere,
+      telefonoRiferimento: o.telefonoRiferimento ? '+' + o.telefonoRiferimento : null
+    };
+    this.coordinateTrovate = true;
+    this.geocodificaInCorso = false;
+    this.erroreGeocodifica = '';
+    this.indirizzoNormalizzato = o.indirizzo;
+  }
+
+  annullaModifica(): void {
+    this.obiettivoInModifica = null;
+    this.nuovoObiettivo = this.obiettivoVuoto();
+    this.coordinateTrovate = false;
+    this.geocodificaInCorso = false;
+    this.erroreGeocodifica = '';
+    this.indirizzoNormalizzato = '';
   }
 
   creaPattuglia(): void {
@@ -249,16 +309,21 @@ export class GestionePattuglieComponent implements OnInit {
     this.adminService.impostaStatoPattuglia(pattuglia.id, !pattuglia.attiva).subscribe(() => this.carica());
   }
 
-  creaObiettivo(pattugliaId: number): void {
+  salvaObiettivo(pattugliaId: number): void {
     this.messaggio = '';
-    this.adminService.creaObiettivo(pattugliaId, this.nuovoObiettivo).subscribe({
+    const inModifica = this.obiettivoInModifica !== null;
+    const richiesta = inModifica
+      ? this.adminService.aggiornaObiettivo(this.obiettivoInModifica!, this.nuovoObiettivo)
+      : this.adminService.creaObiettivo(pattugliaId, this.nuovoObiettivo);
+
+    richiesta.subscribe({
       next: () => {
-        this.messaggio = 'Obiettivo aggiunto con successo.';
-        this.nuovoObiettivo = this.obiettivoVuoto();
-        this.coordinateTrovate = false;
-        this.indirizzoNormalizzato = '';
+        this.messaggio = inModifica ? 'Obiettivo aggiornato con successo.' : 'Obiettivo aggiunto con successo.';
+        this.annullaModifica();
+        this.caricaObiettivi(pattugliaId);
       },
-      error: () => this.messaggio = 'Errore durante la creazione dell\'obiettivo.'
+      error: (err) => this.messaggio = err?.error?.errore
+        ?? (inModifica ? 'Errore durante l\'aggiornamento dell\'obiettivo.' : 'Errore durante la creazione dell\'obiettivo.')
     });
   }
 }
