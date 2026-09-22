@@ -12,7 +12,10 @@ import { AuthService } from '../../core/services/auth.service';
   template: `
     <div class="container">
       <div class="header">
-        <h1>Obiettivi da raggiungere</h1>
+        <div>
+          <h1>Obiettivi da raggiungere</h1>
+          <p class="saluto" *ngIf="nomeUtente">Ciao, {{ nomeUtente }}</p>
+        </div>
         <div class="azioni-header">
           <button class="btn-ottimizza" (click)="ottimizzaRotta()" [disabled]="ottimizzando">
             {{ ottimizzando ? 'Calcolo in corso…' : 'Ottimizza rotta' }}
@@ -124,6 +127,7 @@ export class ListaObiettiviComponent implements OnInit {
   ottimizzando = false;
   messaggio = '';
   risultatoOttimizzazione: RisultatoOttimizzazione | null = null;
+  nomeUtente: string | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -135,6 +139,7 @@ export class ListaObiettiviComponent implements OnInit {
 
   ngOnInit(): void {
     this.pattugliaId = Number(this.route.snapshot.paramMap.get('pattugliaId'));
+    this.nomeUtente = this.authService.getNomeCompleto();
     this.caricaObiettivi();
   }
 

@@ -16,6 +16,12 @@ h1 {
   font-size: 1.3rem;
 }
 
+.saluto {
+  margin: 0.2rem 0 0;
+  color: #5f6b7a;
+  font-size: 0.85rem;
+}
+
 .azioni-header {
   display: flex;
   gap: 0.5rem;
