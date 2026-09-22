@@ -158,6 +158,56 @@ h1 {
   font-size: 0.8rem;
 }
 
+.overlay-modale {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 31, 68, 0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 5vh 1rem;
+  z-index: 1000;
+  overflow-y: auto;
+}
+
+.modale {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1.25rem;
+  width: 100%;
+  max-width: 640px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+}
+
+.modale-intestazione {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.modale-intestazione h3 {
+  margin: 0;
+  color: #0a1f44;
+}
+
+.btn-chiudi-modale {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: #666;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+}
+
+.btn-chiudi-modale:hover {
+  color: #b00020;
+}
+
 .badge-tipo {
   display: inline-block;
   margin-left: 0.4rem;

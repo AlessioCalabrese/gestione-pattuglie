@@ -19,6 +19,62 @@ h1 {
   margin-bottom: 0;
 }
 
+.saluto {
+  margin: 0.2rem 0 0;
+  color: #5f6b7a;
+  font-size: 0.9rem;
+}
+
+.sottotitolo-gruppi {
+  margin: 1rem 0 0.5rem;
+  color: #0a1f44;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.lista-gruppi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.card-gruppo {
+  background: #fff;
+  border-left: 4px solid #0a1f44;
+  border-radius: 6px;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.card-gruppo:hover {
+  transform: translateY(-2px);
+}
+
+.card-gruppo h2 {
+  color: #0a1f44;
+  margin: 0 0 0.3rem;
+  font-size: 1.05rem;
+}
+
+.card-gruppo p {
+  margin: 0;
+  color: #5f6b7a;
+  font-size: 0.85rem;
+}
+
+.badge-gruppo {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: bold;
+  color: #fff;
+  background: #0a1f44;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+}
+
 .btn-esci {
   background: #fff;
   color: #b00020;

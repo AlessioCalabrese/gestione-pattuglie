@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import { PattugliaService, Obiettivo, RisultatoOttimizzazione, FlagRequest } from '../../core/services/pattuglia.service';
+import { PattugliaService, Obiettivo, RisultatoOttimizzazione, FlagRequest, ETICHETTE_TIPO_OBIETTIVO } from '../../core/services/pattuglia.service';
 import { PosizioneService } from '../../core/services/posizione.service';
 import { AuthService } from '../../core/services/auth.service';
 
@@ -82,7 +82,7 @@ import { AuthService } from '../../core/services/auth.service';
           <div class="dettagli">
             <h3>
               {{ o.nome }}
-              <span class="badge-tipo">{{ o.tipoObiettivo === 'BIGLIETTAZIONE' ? 'Bigliettazione' : 'Ispezione' }}</span>
+              <span class="badge-tipo">{{ etichetteTipo[o.tipoObiettivo] }}</span>
               <span class="badge-priorita" *ngIf="o.priorita">Priorità</span>
               <span class="badge-fuori-servizio" *ngIf="!o.inServizioOra">Fuori servizio ora</span>
             </h3>
@@ -116,6 +116,8 @@ import { AuthService } from '../../core/services/auth.service';
   styleUrls: ['./lista-obiettivi.component.css']
 })
 export class ListaObiettiviComponent implements OnInit {
+  readonly etichetteTipo = ETICHETTE_TIPO_OBIETTIVO;
+
   pattugliaId!: number;
   obiettivi: Obiettivo[] = [];
   flaggando: number | null = null;

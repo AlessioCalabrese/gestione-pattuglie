@@ -99,7 +99,16 @@ public class PattugliaService {
         PattugliaDTO dto = new PattugliaDTO(p.getId(), p.getNome(), p.getDescrizione(), p.isAttiva(), List.of());
         dto.setTipoCarburante(p.getTipoCarburante());
         dto.setPreferita(preferita);
+        applicaGruppo(dto, p);
         return dto;
+    }
+
+    /** Riporta sul DTO il gruppo di accorpamento della pattuglia, se ne ha uno. */
+    private void applicaGruppo(PattugliaDTO dto, Pattuglia p) {
+        if (p.getGruppo() != null) {
+            dto.setGruppoId(p.getGruppo().getId());
+            dto.setGruppoNome(p.getGruppo().getNome());
+        }
     }
 
     /**
@@ -162,6 +171,7 @@ public class PattugliaService {
         PattugliaDTO dto = new PattugliaDTO(p.getId(), p.getNome(), p.getDescrizione(),
                 p.isAttiva(), obiettivi);
         dto.setTipoCarburante(p.getTipoCarburante());
+        applicaGruppo(dto, p);
         return dto;
     }
 

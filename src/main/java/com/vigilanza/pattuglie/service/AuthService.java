@@ -36,7 +36,8 @@ public class AuthService {
             throw new SecurityException("Credenziali non valide");
         }
 
-        String token = jwtUtil.generaToken(utente.getId(), utente.getUsername(), utente.getRuolo().name());
+        String token = jwtUtil.generaToken(utente.getId(), utente.getUsername(), utente.getRuolo().name(),
+                utente.getNome(), utente.getCognome());
         logSistemaService.registra(utente, "LOGIN", "Login effettuato (password)", indirizzoIp);
         return token;
     }
@@ -61,7 +62,8 @@ public class AuthService {
             throw new SecurityException("Utente disabilitato");
         }
 
-        String token = jwtUtil.generaToken(utente.getId(), utente.getUsername(), utente.getRuolo().name());
+        String token = jwtUtil.generaToken(utente.getId(), utente.getUsername(), utente.getRuolo().name(),
+                utente.getNome(), utente.getCognome());
         logSistemaService.registra(utente, "LOGIN",
                 manuale ? "Login effettuato (tag NFC, codice inserito manualmente)" : "Login effettuato (tag NFC)",
                 indirizzoIp);

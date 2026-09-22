@@ -40,13 +40,25 @@ export class AuthService {
     return !!this.getToken();
   }
 
-  /** Decodifica il payload del JWT (senza validare la firma: solo per leggere il ruolo lato UI). */
+  /** Decodifica il payload del JWT (senza validare la firma: solo per leggere ruolo/nome lato UI). */
   getRuolo(): string | null {
+    return this.decodificaPayload()?.ruolo ?? null;
+  }
+
+  /** "Nome Cognome" dell'utente loggato, per mostrarlo in pagina; null se non decodificabile. */
+  getNomeCompleto(): string | null {
+    const payload = this.decodificaPayload();
+    if (!payload?.nome && !payload?.cognome) {
+      return null;
+    }
+    return [payload.nome, payload.cognome].filter(v => !!v).join(' ');
+  }
+
+  private decodificaPayload(): { ruolo?: string; nome?: string; cognome?: string } | null {
     const token = this.getToken();
     if (!token) return null;
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload.ruolo ?? null;
+      return JSON.parse(atob(token.split('.')[1]));
     } catch {
       return null;
     }

@@ -8,11 +8,20 @@ export interface Pattuglia {
   descrizione: string;
   attiva: boolean;
   preferita: boolean; // tra le preferite dell'utente loggato
+  /** Gruppo di accorpamento a cui appartiene, se configurato dall'amministratore; null = nessun accorpamento. */
+  gruppoId: number | null;
+  gruppoNome: string | null;
 }
 
 export type GiornoSettimana = 'LUNEDI' | 'MARTEDI' | 'MERCOLEDI' | 'GIOVEDI' | 'VENERDI' | 'SABATO' | 'DOMENICA';
 
-export type TipoObiettivo = 'ISPEZIONE' | 'BIGLIETTAZIONE';
+export type TipoObiettivo = 'DATIX' | 'ISPEZIONE' | 'BIGLIETTAZIONE';
+
+export const ETICHETTE_TIPO_OBIETTIVO: Record<TipoObiettivo, string> = {
+  DATIX: 'Datix',
+  ISPEZIONE: 'Ispezione',
+  BIGLIETTAZIONE: 'Bigliettazione'
+};
 
 /**
  * Fascia oraria di servizio configurata su un obiettivo: un giorno può averne più di una (es. mattina e

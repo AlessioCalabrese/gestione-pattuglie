@@ -28,7 +28,12 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secretConfigurato.getBytes());
     }
 
-    public String generaToken(Long utenteId, String username, String ruolo) {
+    /**
+     * Nome e cognome sono inclusi nel token solo per comodità della UI (es. "Ciao, Nome Cognome" nella
+     * schermata di selezione pattuglia), lette lato client senza bisogno di una chiamata API aggiuntiva:
+     * non vanno usate per decisioni di sicurezza, che restano basate su utenteId/ruolo.
+     */
+    public String generaToken(Long utenteId, String username, String ruolo, String nome, String cognome) {
         Date now = new Date();
         Date scadenza = new Date(now.getTime() + scadenzaMinuti * 60_000L);
 
@@ -36,6 +41,8 @@ public class JwtUtil {
                 .subject(username)
                 .claim("utenteId", utenteId)
                 .claim("ruolo", ruolo)
+                .claim("nome", nome)
+                .claim("cognome", cognome)
                 .issuedAt(now)
                 .expiration(scadenza)
                 .signWith(getSigningKey())

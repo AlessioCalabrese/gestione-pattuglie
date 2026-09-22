@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Obiettivo, GiornoSettimana, FasciaOraria, TipoObiettivo } from './pattuglia.service';
+import { Obiettivo, GiornoSettimana, FasciaOraria, TipoObiettivo, ETICHETTE_TIPO_OBIETTIVO } from './pattuglia.service';
 
 export interface Utente {
   id: number;
@@ -95,6 +95,7 @@ export interface NuovoObiettivo {
 
 // Riesportati per comodità di chi importa solo da admin.service (uso storico nei componenti admin).
 export type { GiornoSettimana, FasciaOraria, TipoObiettivo };
+export { ETICHETTE_TIPO_OBIETTIVO };
 
 /** Orari dei tre turni standard, usati come proposta rapida per le fasce orarie ("HH:mm"). Notte attraversa la mezzanotte. */
 export interface ConfigurazioneTurni {

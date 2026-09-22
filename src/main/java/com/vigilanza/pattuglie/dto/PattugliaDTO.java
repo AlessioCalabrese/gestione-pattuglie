@@ -12,6 +12,9 @@ public class PattugliaDTO {
     private com.vigilanza.pattuglie.entity.TipoCarburante tipoCarburante;
     /** Vero se la pattuglia è tra le preferite dell'utente a cui la lista si riferisce. */
     private boolean preferita;
+    /** Gruppo di accorpamento a cui appartiene, se configurato dall'amministratore; null = nessun accorpamento. */
+    private Long gruppoId;
+    private String gruppoNome;
 
     public PattugliaDTO() {
     }
@@ -71,6 +74,22 @@ public class PattugliaDTO {
 
     public void setPreferita(boolean preferita) {
         this.preferita = preferita;
+    }
+
+    public Long getGruppoId() {
+        return gruppoId;
+    }
+
+    public void setGruppoId(Long gruppoId) {
+        this.gruppoId = gruppoId;
+    }
+
+    public String getGruppoNome() {
+        return gruppoNome;
+    }
+
+    public void setGruppoNome(String gruppoNome) {
+        this.gruppoNome = gruppoNome;
     }
 
     public com.vigilanza.pattuglie.entity.TipoCarburante getTipoCarburante() {

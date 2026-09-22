@@ -5,6 +5,14 @@ import { Router } from '@angular/router';
 import { PattugliaService, Pattuglia } from '../../core/services/pattuglia.service';
 import { AuthService } from '../../core/services/auth.service';
 
+/** Un gruppo di accorpamento, ricavato dalle pattuglie selezionabili, con la pattuglia da usare per entrarci. */
+interface GruppoSelezionabile {
+  id: number;
+  nome: string;
+  pattuglie: string[]; // nomi delle pattuglie accorpate, per mostrarle
+  pattugliaDiIngresso: Pattuglia; // una qualunque pattuglia del gruppo: il backend unisce già gli obiettivi
+}
+
 @Component({
   selector: 'app-selezione-pattuglia',
   standalone: true,
@@ -12,8 +20,23 @@ import { AuthService } from '../../core/services/auth.service';
   template: `
     <div class="container">
       <div class="header">
-        <h1>Seleziona la tua pattuglia</h1>
+        <div>
+          <h1>Seleziona la tua pattuglia</h1>
+          <p class="saluto" *ngIf="nomeUtente">Ciao, {{ nomeUtente }}</p>
+        </div>
         <button class="btn-esci" (click)="esci()">Esci</button>
+      </div>
+
+      <div class="lista-gruppi" *ngIf="gruppi.length > 0">
+        <p class="sottotitolo-gruppi">I tuoi gruppi di pattuglie accorpate</p>
+        <div class="card-gruppo" *ngFor="let g of gruppi" (click)="selezionaGruppo(g)">
+          <h2>{{ g.nome }}</h2>
+          <p>{{ g.pattuglie.length }} pattuglie accorpate: {{ g.pattuglie.join(', ') }}</p>
+        </div>
+        <p class="suggerimento">
+          Selezionando un gruppo vedi e puoi flaggare gli obiettivi di tutte le pattuglie accorpate insieme;
+          puoi comunque selezionare una singola pattuglia del gruppo qui sotto.
+        </p>
       </div>
 
       <div class="barra-strumenti">
@@ -37,6 +60,7 @@ import { AuthService } from '../../core/services/auth.service';
           </button>
           <h2>{{ p.nome }}</h2>
           <p>{{ p.descrizione }}</p>
+          <span class="badge-gruppo" *ngIf="p.gruppoNome">Gruppo: {{ p.gruppoNome }}</span>
         </div>
       </div>
 
@@ -49,10 +73,12 @@ import { AuthService } from '../../core/services/auth.service';
 })
 export class SelezionePattugliaComponent implements OnInit {
   pattuglie: Pattuglia[] = [];
+  gruppi: GruppoSelezionabile[] = [];
   ricerca = '';
   mostraTutte = false;
   caricato = false;
   errore = '';
+  nomeUtente: string | null = null;
 
   constructor(
     private pattugliaService: PattugliaService,
@@ -61,6 +87,7 @@ export class SelezionePattugliaComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.nomeUtente = this.authService.getNomeCompleto();
     this.carica();
   }
 
@@ -82,10 +109,28 @@ export class SelezionePattugliaComponent implements OnInit {
     this.pattugliaService.pattuglieSelezionabili(this.mostraTutte).subscribe({
       next: p => {
         this.pattuglie = p;
+        this.gruppi = this.estraiGruppi(p);
         this.caricato = true;
       },
       error: () => this.errore = 'Errore durante il caricamento delle pattuglie.'
     });
+  }
+
+  /** Gruppi distinti tra le pattuglie ricevute, con l'elenco dei nomi delle pattuglie che ne fanno parte. */
+  private estraiGruppi(pattuglie: Pattuglia[]): GruppoSelezionabile[] {
+    const gruppi = new Map<number, GruppoSelezionabile>();
+    for (const p of pattuglie) {
+      if (p.gruppoId === null || p.gruppoNome === null) {
+        continue;
+      }
+      const esistente = gruppi.get(p.gruppoId);
+      if (esistente) {
+        esistente.pattuglie.push(p.nome);
+      } else {
+        gruppi.set(p.gruppoId, { id: p.gruppoId, nome: p.gruppoNome, pattuglie: [p.nome], pattugliaDiIngresso: p });
+      }
+    }
+    return [...gruppi.values()].sort((a, b) => a.nome.localeCompare(b.nome));
   }
 
   cambiaVista(): void {
@@ -112,6 +157,11 @@ export class SelezionePattugliaComponent implements OnInit {
 
   seleziona(pattuglia: Pattuglia): void {
     this.router.navigate(['/obiettivi', pattuglia.id]);
+  }
+
+  /** Entra nel gruppo tramite una qualunque delle sue pattuglie: il backend unisce già gli obiettivi di tutte. */
+  selezionaGruppo(gruppo: GruppoSelezionabile): void {
+    this.seleziona(gruppo.pattugliaDiIngresso);
   }
 
   esci(): void {

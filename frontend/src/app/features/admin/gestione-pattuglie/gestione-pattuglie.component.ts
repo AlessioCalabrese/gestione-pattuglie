@@ -1,10 +1,11 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, debounceTime, distinctUntilChanged, switchMap, of, catchError } from 'rxjs';
 import {
   AdminService, Pattuglia, PattugliaRicerca, NuovoObiettivo, GiornoSettimana, FasciaOraria,
-  StatoAggiornamentoCoordinate, PropostaIndirizzo, ConfigurazioneTurni, GruppoPattuglie, MembroGruppo
+  StatoAggiornamentoCoordinate, PropostaIndirizzo, ConfigurazioneTurni, GruppoPattuglie, MembroGruppo,
+  ETICHETTE_TIPO_OBIETTIVO
 } from '../../../core/services/admin.service';
 import { Obiettivo } from '../../../core/services/pattuglia.service';
 
@@ -214,7 +215,7 @@ interface GiornoOpzione {
                 [class.trovato]="corrispondeARicerca(o)">
               <div>
                 <strong>{{ o.nome }}</strong> — {{ o.indirizzo }}
-                <span class="badge-tipo">{{ o.tipoObiettivo === 'BIGLIETTAZIONE' ? 'Bigliettazione' : 'Ispezione' }}</span>
+                <span class="badge-tipo">{{ etichetteTipo[o.tipoObiettivo] }}</span>
                 <span class="telefono" *ngIf="o.telefonoRiferimento">· WhatsApp: +{{ o.telefonoRiferimento }}</span>
                 <div class="fasce-riepilogo">{{ formattaFasceRiepilogo(o.fasceOrarie) }}</div>
               </div>
@@ -227,90 +228,111 @@ interface GiornoOpzione {
             <button type="button" (click)="vaiAPaginaObiettivi(p.id, paginaObiettivi + 1)" [disabled]="paginaObiettivi >= totalePagineObiettivi - 1">Successiva »</button>
           </div>
 
-          <h3>{{ obiettivoInModifica ? 'Modifica obiettivo' : 'Aggiungi obiettivo' }}</h3>
-          <form class="form-obiettivo" (ngSubmit)="salvaObiettivo(p.id)">
-            <input type="text" [(ngModel)]="nuovoObiettivo.nome" name="nomeObiettivo" placeholder="Nome obiettivo" required />
+          <!-- Contenuto del form, condiviso tra l'inserimento inline (sotto) e la modale di modifica -->
+          <ng-template #formObiettivoTpl>
+            <form class="form-obiettivo" (ngSubmit)="salvaObiettivo(p.id)">
+              <input type="text" [(ngModel)]="nuovoObiettivo.nome" name="nomeObiettivo" placeholder="Nome obiettivo" required />
 
-            <select [(ngModel)]="nuovoObiettivo.tipoObiettivo" name="tipoObiettivo">
-              <option value="ISPEZIONE">Ispezione</option>
-              <option value="BIGLIETTAZIONE">Bigliettazione</option>
-            </select>
+              <select [(ngModel)]="nuovoObiettivo.tipoObiettivo" name="tipoObiettivo">
+                <option value="DATIX">Datix</option>
+                <option value="ISPEZIONE">Ispezione</option>
+                <option value="BIGLIETTAZIONE">Bigliettazione</option>
+              </select>
 
-            <div class="riga-indirizzo">
-              <input
-                type="text" class="campo-via"
-                [(ngModel)]="nuovoObiettivo.via" name="via"
-                placeholder="Via"
-                (ngModelChange)="onIndirizzoCambiato()"
-                required
-              />
-              <input
-                type="text" class="campo-comune"
-                [(ngModel)]="nuovoObiettivo.comune" name="comune"
-                placeholder="Comune"
-                (ngModelChange)="onIndirizzoCambiato()"
-                required
-              />
-            </div>
-
-            <input type="tel" [(ngModel)]="nuovoObiettivo.telefonoRiferimento" name="telefonoRiferimento"
-                   placeholder="Cellulare di riferimento per avviso WhatsApp (opzionale, es. +39 333 1234567)" />
-
-            <label class="checkbox-priorita">
-              <input type="checkbox" [(ngModel)]="nuovoObiettivo.priorita" name="priorita" />
-              Priorità alta (visitato per primo nel percorso ottimizzato)
-            </label>
-
-            <div class="blocco-pianificazione">
-              <p class="sottotitolo">
-                Fasce orarie di servizio (obbligatorio: aggiungi almeno una fascia — puoi averne più
-                di una nello stesso giorno, es. mattina e sera, e giorni diversi possono avere fasce diverse)
-              </p>
-              <div class="fascia-riga" *ngFor="let f of nuovoObiettivo.fasceOrarie; let i = index">
-                <select [(ngModel)]="f.giorno" [name]="'fasciaGiorno' + i">
-                  <option *ngFor="let g of giorniDisponibili" [value]="g.valore">{{ g.etichetta }}</option>
-                </select>
-                <select (change)="applicaTurno(f, $any($event.target).value)" title="Precompila con un turno standard">
-                  <option value="">Personalizza…</option>
-                  <option value="MATTINA">Turno Mattina</option>
-                  <option value="POMERIGGIO">Turno Pomeriggio</option>
-                  <option value="NOTTE">Turno Notte</option>
-                </select>
-                <input type="time" [(ngModel)]="f.oraInizio" [name]="'fasciaInizio' + i" title="Ora inizio (vuota = da mezzanotte)" />
-                <span>—</span>
-                <input type="time" [(ngModel)]="f.oraFine" [name]="'fasciaFine' + i" title="Ora fine (vuota = fino a mezzanotte; se precede l'inizio, la fascia è notturna e finisce il giorno dopo)" />
-                <input type="number" min="1" [(ngModel)]="f.ripetizioniRichieste" [name]="'fasciaRipetizioni' + i"
-                       class="campo-ripetizioni" title="Ripetizioni richieste in questa fascia" />
-                <button type="button" class="btn-rimuovi-fascia" (click)="rimuoviFascia(i)" title="Rimuovi fascia">✕</button>
+              <div class="riga-indirizzo">
+                <input
+                  type="text" class="campo-via"
+                  [(ngModel)]="nuovoObiettivo.via" name="via"
+                  placeholder="Via"
+                  (ngModelChange)="onIndirizzoCambiato()"
+                  required
+                />
+                <input
+                  type="text" class="campo-comune"
+                  [(ngModel)]="nuovoObiettivo.comune" name="comune"
+                  placeholder="Comune"
+                  (ngModelChange)="onIndirizzoCambiato()"
+                  required
+                />
               </div>
-              <button type="button" class="btn-aggiungi-fascia" (click)="aggiungiFascia()">+ Aggiungi fascia oraria</button>
-            </div>
 
-            <button type="submit" [disabled]="!coordinateTrovate || nuovoObiettivo.fasceOrarie.length === 0">
-              {{ obiettivoInModifica ? 'Salva modifiche' : 'Aggiungi obiettivo' }}
-            </button>
-            <button type="button" *ngIf="obiettivoInModifica" (click)="annullaModifica()">Annulla modifica</button>
-            <p class="avviso-validazione" *ngIf="coordinateTrovate && nuovoObiettivo.fasceOrarie.length === 0">
-              Aggiungi almeno una fascia oraria di servizio per poter salvare l'obiettivo.
+              <input type="tel" [(ngModel)]="nuovoObiettivo.telefonoRiferimento" name="telefonoRiferimento"
+                     placeholder="Cellulare di riferimento per avviso WhatsApp (opzionale, es. +39 333 1234567)" />
+
+              <label class="checkbox-priorita">
+                <input type="checkbox" [(ngModel)]="nuovoObiettivo.priorita" name="priorita" />
+                Priorità alta (visitato per primo nel percorso ottimizzato)
+              </label>
+
+              <div class="blocco-pianificazione">
+                <p class="sottotitolo">
+                  Fasce orarie di servizio (obbligatorio: aggiungi almeno una fascia — puoi averne più
+                  di una nello stesso giorno, es. mattina e sera, e giorni diversi possono avere fasce diverse)
+                </p>
+                <div class="fascia-riga" *ngFor="let f of nuovoObiettivo.fasceOrarie; let i = index">
+                  <select [(ngModel)]="f.giorno" [name]="'fasciaGiorno' + i">
+                    <option *ngFor="let g of giorniDisponibili" [value]="g.valore">{{ g.etichetta }}</option>
+                  </select>
+                  <select (change)="applicaTurno(f, $any($event.target).value)" title="Precompila con un turno standard">
+                    <option value="">Personalizza…</option>
+                    <option value="MATTINA">Turno Mattina</option>
+                    <option value="POMERIGGIO">Turno Pomeriggio</option>
+                    <option value="NOTTE">Turno Notte</option>
+                  </select>
+                  <input type="time" [(ngModel)]="f.oraInizio" [name]="'fasciaInizio' + i" title="Ora inizio (vuota = da mezzanotte)" />
+                  <span>—</span>
+                  <input type="time" [(ngModel)]="f.oraFine" [name]="'fasciaFine' + i" title="Ora fine (vuota = fino a mezzanotte; se precede l'inizio, la fascia è notturna e finisce il giorno dopo)" />
+                  <input type="number" min="1" [(ngModel)]="f.ripetizioniRichieste" [name]="'fasciaRipetizioni' + i"
+                         class="campo-ripetizioni" title="Ripetizioni richieste in questa fascia" />
+                  <button type="button" class="btn-rimuovi-fascia" (click)="rimuoviFascia(i)" title="Rimuovi fascia">✕</button>
+                </div>
+                <button type="button" class="btn-aggiungi-fascia" (click)="aggiungiFascia()">+ Aggiungi fascia oraria</button>
+              </div>
+
+              <button type="submit" [disabled]="!coordinateTrovate || nuovoObiettivo.fasceOrarie.length === 0">
+                {{ obiettivoInModifica ? 'Salva modifiche' : 'Aggiungi obiettivo' }}
+              </button>
+              <button type="button" *ngIf="obiettivoInModifica" (click)="annullaModifica()">Annulla</button>
+              <p class="avviso-validazione" *ngIf="coordinateTrovate && nuovoObiettivo.fasceOrarie.length === 0">
+                Aggiungi almeno una fascia oraria di servizio per poter salvare l'obiettivo.
+              </p>
+            </form>
+
+            <p class="stato-geocodifica" *ngIf="geocodificaInCorso">Ricerca indirizzo in corso…</p>
+            <p class="stato-geocodifica ok" *ngIf="!geocodificaInCorso && coordinateTrovate">
+              ✓ Trovato: {{ indirizzoNormalizzato }}
+              ({{ nuovoObiettivo.latitudine | number: '1.5-5' }}, {{ nuovoObiettivo.longitudine | number: '1.5-5' }})
             </p>
-          </form>
+            <p class="stato-geocodifica errore" *ngIf="!geocodificaInCorso && erroreGeocodifica">
+              {{ erroreGeocodifica }} — puoi correggere manualmente le coordinate qui sotto.
+            </p>
 
-          <p class="stato-geocodifica" *ngIf="geocodificaInCorso">Ricerca indirizzo in corso…</p>
-          <p class="stato-geocodifica ok" *ngIf="!geocodificaInCorso && coordinateTrovate">
-            ✓ Trovato: {{ indirizzoNormalizzato }}
-            ({{ nuovoObiettivo.latitudine | number: '1.5-5' }}, {{ nuovoObiettivo.longitudine | number: '1.5-5' }})
-          </p>
-          <p class="stato-geocodifica errore" *ngIf="!geocodificaInCorso && erroreGeocodifica">
-            {{ erroreGeocodifica }} — puoi correggere manualmente le coordinate qui sotto.
-          </p>
+            <details class="coordinate-manuali">
+              <summary>Correggi coordinate manualmente</summary>
+              <div class="riga-coordinate">
+                <input type="number" step="0.0000001" [(ngModel)]="nuovoObiettivo.latitudine" name="latManuale" placeholder="Latitudine" />
+                <input type="number" step="0.0000001" [(ngModel)]="nuovoObiettivo.longitudine" name="lngManuale" placeholder="Longitudine" />
+              </div>
+            </details>
+          </ng-template>
 
-          <details class="coordinate-manuali">
-            <summary>Correggi coordinate manualmente</summary>
-            <div class="riga-coordinate">
-              <input type="number" step="0.0000001" [(ngModel)]="nuovoObiettivo.latitudine" name="latManuale" placeholder="Latitudine" />
-              <input type="number" step="0.0000001" [(ngModel)]="nuovoObiettivo.longitudine" name="lngManuale" placeholder="Longitudine" />
+          <!-- Aggiunta: form inline -->
+          <ng-container *ngIf="!obiettivoInModifica">
+            <h3>Aggiungi obiettivo</h3>
+            <ng-container *ngTemplateOutlet="formObiettivoTpl"></ng-container>
+          </ng-container>
+
+          <!-- Modifica: stesso form, in una modale che indica l'obiettivo in modifica -->
+          <div class="overlay-modale" *ngIf="obiettivoInModifica" (click)="annullaModifica()">
+            <div class="modale" role="dialog" aria-modal="true" [attr.aria-label]="'Modifica obiettivo ' + nomeObiettivoInModifica"
+                 (click)="$event.stopPropagation()">
+              <div class="modale-intestazione">
+                <h3>Modifica obiettivo: {{ nomeObiettivoInModifica }}</h3>
+                <button type="button" class="btn-chiudi-modale" (click)="annullaModifica()" aria-label="Chiudi">✕</button>
+              </div>
+              <ng-container *ngTemplateOutlet="formObiettivoTpl"></ng-container>
             </div>
-          </details>
+          </div>
         </div>
       </div>
     </div>
@@ -324,6 +346,8 @@ interface GiornoOpzione {
   styleUrls: ['./gestione-pattuglie.component.css']
 })
 export class GestionePattuglieComponent implements OnInit, OnDestroy {
+  readonly etichetteTipo = ETICHETTE_TIPO_OBIETTIVO;
+
   statoCoordinate: StatoAggiornamentoCoordinate | null = null;
   private timerCoordinate: ReturnType<typeof setInterval> | null = null;
 
@@ -346,6 +370,8 @@ export class GestionePattuglieComponent implements OnInit, OnDestroy {
   totalePagineObiettivi = 0;
   totaleObiettivi = 0;
   obiettivoInModifica: number | null = null;
+  /** Nome dell'obiettivo mostrato nella modale di modifica: fissato all'apertura, non segue le modifiche del form. */
+  nomeObiettivoInModifica = '';
 
   nuovoObiettivo: NuovoObiettivo = this.obiettivoVuoto();
 
@@ -433,6 +459,13 @@ export class GestionePattuglieComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.fermaMonitoraggio();
+  }
+
+  @HostListener('document:keydown.escape')
+  chiudiModaleConEsc(): void {
+    if (this.obiettivoInModifica !== null) {
+      this.annullaModifica();
+    }
   }
 
   get aggiornamentoInCorso(): boolean {
@@ -753,6 +786,7 @@ export class GestionePattuglieComponent implements OnInit, OnDestroy {
   modificaObiettivo(o: Obiettivo): void {
     this.messaggio = '';
     this.obiettivoInModifica = o.id;
+    this.nomeObiettivoInModifica = o.nome;
     this.nuovoObiettivo = {
       nome: o.nome, tipoObiettivo: o.tipoObiettivo, via: o.via, comune: o.comune,
       latitudine: o.latitudine, longitudine: o.longitudine, priorita: o.priorita,
@@ -773,6 +807,7 @@ export class GestionePattuglieComponent implements OnInit, OnDestroy {
 
   annullaModifica(): void {
     this.obiettivoInModifica = null;
+    this.nomeObiettivoInModifica = '';
     this.nuovoObiettivo = this.obiettivoVuoto();
     this.coordinateTrovate = false;
     this.geocodificaInCorso = false;
