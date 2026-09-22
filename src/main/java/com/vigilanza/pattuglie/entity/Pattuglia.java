@@ -37,6 +37,14 @@ public class Pattuglia {
     @ManyToMany(mappedBy = "pattuglieAbilitate")
     private Set<Utente> utentiAbilitati = new HashSet<>();
 
+    /**
+     * Gruppo di accorpamento a cui appartiene la pattuglia, se configurato dall'amministratore (vedi
+     * {@link GruppoPattuglie}). Null = nessun accorpamento: la pattuglia vede solo i propri obiettivi.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "gruppo_id")
+    private GruppoPattuglie gruppo;
+
     public Pattuglia() {
     }
 
@@ -109,5 +117,13 @@ public class Pattuglia {
 
     public void setUtentiAbilitati(Set<Utente> utentiAbilitati) {
         this.utentiAbilitati = utentiAbilitati;
+    }
+
+    public GruppoPattuglie getGruppo() {
+        return gruppo;
+    }
+
+    public void setGruppo(GruppoPattuglie gruppo) {
+        this.gruppo = gruppo;
     }
 }

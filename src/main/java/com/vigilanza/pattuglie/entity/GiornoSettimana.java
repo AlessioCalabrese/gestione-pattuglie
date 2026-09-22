@@ -21,4 +21,10 @@ public enum GiornoSettimana {
             case SUNDAY -> DOMENICA;
         };
     }
+
+    /** Il giorno della settimana successivo (DOMENICA -&gt; LUNEDI). */
+    public GiornoSettimana successivo() {
+        GiornoSettimana[] valori = values();
+        return valori[(this.ordinal() + 1) % valori.length];
+    }
 }

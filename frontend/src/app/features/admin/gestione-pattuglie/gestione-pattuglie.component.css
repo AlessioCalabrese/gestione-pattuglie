@@ -21,6 +21,153 @@ h1 {
   white-space: nowrap;
 }
 
+.btn-secondario {
+  background: #fff;
+  color: #0a1f44;
+  border: 1px solid #0a1f44;
+  padding: 0.5rem 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+.pannello-turni, .pannello-gruppi {
+  margin: 12px 0;
+  padding: 12px 16px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.pannello-turni h3, .pannello-gruppi h3 {
+  margin: 0 0 0.4rem;
+  color: #0a1f44;
+}
+
+.form-turni {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.turno-riga {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.turno-riga strong {
+  width: 100px;
+  color: #0a1f44;
+}
+
+.turno-riga input[type="time"] {
+  padding: 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.form-turni button, .form-nuovo-gruppo button {
+  align-self: flex-start;
+  background: #c9a227;
+  color: #0a1f44;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.messaggio.errore {
+  background: none;
+  color: #b00020;
+  padding: 0;
+}
+
+.form-nuovo-gruppo {
+  display: flex;
+  gap: 0.6rem;
+  margin: 0.5rem 0;
+}
+
+.form-nuovo-gruppo input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.gruppo {
+  border-top: 1px solid #eee;
+  padding-top: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.gruppo-intestazione {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.gruppo-intestazione .btn-elimina {
+  margin-left: auto;
+}
+
+.gruppo-corpo {
+  padding: 0.5rem 0 0.25rem;
+}
+
+.lista-associate {
+  list-style: none;
+  padding: 0;
+  margin: 0.4rem 0 0.8rem;
+}
+
+.lista-associate li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.ricerca-pattuglie {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.4rem 0;
+}
+
+.ricerca-pattuglie input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.btn-elimina {
+  background: #fff;
+  color: #b00020;
+  border: 1px solid #b00020;
+  padding: 0.35rem 0.7rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.badge-tipo {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: #eef1f6;
+  color: #0a1f44;
+  font-size: 0.75em;
+}
+
 .pannello-coordinate {
   margin: 12px 0;
   padding: 10px 14px;
@@ -143,6 +290,54 @@ h1 {
 .lista-obiettivi-admin .telefono {
   color: #1a7f43;
   font-size: 0.9em;
+}
+
+.fasce-riepilogo {
+  font-size: 0.8em;
+  color: #666;
+  margin-top: 2px;
+}
+
+.fascia-riga {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  margin-bottom: 0.4rem;
+}
+
+.fascia-riga select {
+  padding: 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.fascia-riga input[type="time"] {
+  padding: 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.btn-rimuovi-fascia {
+  background: #fff;
+  color: #b00020;
+  border: 1px solid #b00020;
+  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.btn-aggiungi-fascia {
+  background: #fff;
+  color: #0a1f44;
+  border: 1px dashed #0a1f44;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
 }
 
 .form-nuovo, .form-obiettivo {

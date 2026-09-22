@@ -2,10 +2,12 @@ package com.vigilanza.pattuglie.entity;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 @Entity
 @Table(name = "obiettivo")
@@ -40,21 +42,18 @@ public class Obiettivo {
     @Column(nullable = false)
     private boolean priorita = false; // se true, l'ottimizzatore lo visita prima degli altri
 
-    /** Giorni della settimana in cui l'obiettivo è in servizio. Vuoto = mai visibile per le pattuglie (va configurato esplicitamente). */
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "obiettivo_giorno_attivo", joinColumns = @JoinColumn(name = "obiettivo_id"))
     @Enumerated(EnumType.STRING)
-    @Column(name = "giorno")
-    private Set<GiornoSettimana> giorniAttivi = new HashSet<>();
+    @Column(name = "tipo_obiettivo", nullable = false, length = 20)
+    private TipoObiettivo tipoObiettivo = TipoObiettivo.ISPEZIONE;
 
-    @Column(name = "ora_inizio")
-    private LocalTime oraInizio; // null = nessun vincolo di fascia oraria
-
-    @Column(name = "ora_fine")
-    private LocalTime oraFine;
-
-    @Column(name = "ripetizioni_giornaliere", nullable = false)
-    private int ripetizioniGiornaliere = 1; // quante volte va flaggato nella giornata/fascia
+    /**
+     * Fasce orarie di servizio. Ogni fascia è legata a un giorno della settimana; un giorno può avere più
+     * fasce (es. mattina e sera) e giorni diversi possono avere fasce diverse. Vuoto = mai visibile per le
+     * pattuglie (va configurato esplicitamente).
+     */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "obiettivo_fascia_oraria", joinColumns = @JoinColumn(name = "obiettivo_id"))
+    private List<FasciaOraria> fasceOrarie = new ArrayList<>();
 
     /**
      * Cellulare di riferimento dell'obiettivo, in formato internazionale di sole cifre
@@ -87,19 +86,47 @@ public class Obiettivo {
         return via + ", " + comune;
     }
 
+    /** Fasce orarie configurate per il giorno indicato, in ordine di orario di inizio (le "aperte" prima). */
+    public List<FasciaOraria> fasceDiGiorno(GiornoSettimana giorno) {
+        return fasceOrarie.stream()
+                .filter(f -> f.getGiorno() == giorno)
+                .sorted(Comparator.comparing(f -> f.getOraInizio() == null ? LocalTime.MIN : f.getOraInizio()))
+                .toList();
+    }
+
+    /** Vero se l'obiettivo ha almeno una fascia oraria configurata per il giorno indicato. */
+    public boolean isGiornoAttivo(GiornoSettimana giorno) {
+        return fasceOrarie.stream().anyMatch(f -> f.getGiorno() == giorno);
+    }
+
     /**
-     * Vero se, alla data e ora indicate, l'obiettivo è in servizio secondo la
-     * pianificazione configurata (giorni attivi + fascia oraria). Un obiettivo
-     * senza NESSUN giorno configurato non è mai in servizio per le pattuglie:
-     * i giorni di servizio vanno sempre impostati esplicitamente in fase di
-     * creazione. La fascia oraria, invece, se non configurata (oraInizio/oraFine
-     * nulli) non pone vincoli, cioè l'obiettivo è attivo tutto il giorno.
+     * Vero se l'obiettivo riguarda la data indicata: o perché quel giorno della settimana ha almeno una
+     * fascia propria, o perché il giorno precedente ha una fascia notturna la cui coda sconfina in questa
+     * data (es. una fascia di lunedì 22:00–06:00 riguarda anche il martedì mattina). Un obiettivo senza
+     * nessuna fascia configurata non riguarda mai nessuna data: la pianificazione va sempre indicata.
      */
-    public boolean isInServizio(java.time.LocalDate data, LocalTime ora) {
-        boolean giornoOk = !giorniAttivi.isEmpty() && giorniAttivi.contains(GiornoSettimana.daDayOfWeek(data.getDayOfWeek()));
-        boolean orarioOk = (oraInizio == null || !ora.isBefore(oraInizio))
-                && (oraFine == null || !ora.isAfter(oraFine));
-        return giornoOk && orarioOk;
+    public boolean isRilevantePer(LocalDate data) {
+        GiornoSettimana oggi = GiornoSettimana.daDayOfWeek(data.getDayOfWeek());
+        GiornoSettimana ieri = GiornoSettimana.daDayOfWeek(data.minusDays(1).getDayOfWeek());
+        return isGiornoAttivo(oggi) || fasceDiGiorno(ieri).stream().anyMatch(FasciaOraria::isNotturna);
+    }
+
+    /**
+     * Vero se, alla data e ora indicate, l'obiettivo è in servizio secondo la pianificazione configurata.
+     * Considera sia le fasce del giorno stesso (per una fascia notturna, solo la parte serale che cade
+     * oggi) sia la coda di un'eventuale fascia notturna del giorno precedente che sconfina in questa
+     * mattina. Un obiettivo senza nessuna fascia configurata non è mai in servizio per le pattuglie: la
+     * pianificazione va sempre impostata esplicitamente in fase di creazione.
+     */
+    public boolean isInServizio(LocalDate data, LocalTime ora) {
+        GiornoSettimana oggi = GiornoSettimana.daDayOfWeek(data.getDayOfWeek());
+        GiornoSettimana ieri = GiornoSettimana.daDayOfWeek(data.minusDays(1).getDayOfWeek());
+
+        boolean copertoDaOggi = fasceDiGiorno(oggi).stream().anyMatch(f ->
+                f.isNotturna() ? !ora.isBefore(f.getOraInizio()) : f.contiene(ora));
+        boolean copertoDallaNotteDiIeri = fasceDiGiorno(ieri).stream()
+                .anyMatch(f -> f.isNotturna() && !ora.isAfter(f.getOraFine()));
+        return copertoDaOggi || copertoDallaNotteDiIeri;
     }
 
     // Getters e setters
@@ -176,36 +203,20 @@ public class Obiettivo {
         this.priorita = priorita;
     }
 
-    public Set<GiornoSettimana> getGiorniAttivi() {
-        return giorniAttivi;
+    public List<FasciaOraria> getFasceOrarie() {
+        return fasceOrarie;
     }
 
-    public void setGiorniAttivi(Set<GiornoSettimana> giorniAttivi) {
-        this.giorniAttivi = giorniAttivi;
+    public void setFasceOrarie(List<FasciaOraria> fasceOrarie) {
+        this.fasceOrarie = fasceOrarie;
     }
 
-    public LocalTime getOraInizio() {
-        return oraInizio;
+    public TipoObiettivo getTipoObiettivo() {
+        return tipoObiettivo;
     }
 
-    public void setOraInizio(LocalTime oraInizio) {
-        this.oraInizio = oraInizio;
-    }
-
-    public LocalTime getOraFine() {
-        return oraFine;
-    }
-
-    public void setOraFine(LocalTime oraFine) {
-        this.oraFine = oraFine;
-    }
-
-    public int getRipetizioniGiornaliere() {
-        return ripetizioniGiornaliere;
-    }
-
-    public void setRipetizioniGiornaliere(int ripetizioniGiornaliere) {
-        this.ripetizioniGiornaliere = ripetizioniGiornaliere;
+    public void setTipoObiettivo(TipoObiettivo tipoObiettivo) {
+        this.tipoObiettivo = tipoObiettivo;
     }
 
     public String getTelefonoRiferimento() {

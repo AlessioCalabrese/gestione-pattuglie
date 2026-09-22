@@ -1,6 +1,8 @@
 package com.vigilanza.pattuglie.controller;
 
+import com.vigilanza.pattuglie.dto.ConfigurazioneTurniDTO;
 import com.vigilanza.pattuglie.dto.GeocodificaResponse;
+import com.vigilanza.pattuglie.dto.GruppoPattuglieDTO;
 import com.vigilanza.pattuglie.dto.ObiettivoDTO;
 import com.vigilanza.pattuglie.dto.PaginaDTO;
 import com.vigilanza.pattuglie.dto.PattugliaDTO;
@@ -10,7 +12,9 @@ import com.vigilanza.pattuglie.entity.RuoloUtente;
 import com.vigilanza.pattuglie.dto.StatoAggiornamentoCoordinateDTO;
 import com.vigilanza.pattuglie.security.AuthenticatedUser;
 import com.vigilanza.pattuglie.service.AggiornamentoCoordinateService;
+import com.vigilanza.pattuglie.service.ConfigurazioneTurniService;
 import com.vigilanza.pattuglie.service.GeocodingService;
+import com.vigilanza.pattuglie.service.GruppoPattuglieService;
 import com.vigilanza.pattuglie.service.ObiettivoService;
 import com.vigilanza.pattuglie.service.PattugliaService;
 import com.vigilanza.pattuglie.service.UtenteService;
@@ -33,15 +37,21 @@ public class AdminController {
     private final ObiettivoService obiettivoService;
     private final GeocodingService geocodingService;
     private final AggiornamentoCoordinateService aggiornamentoCoordinateService;
+    private final ConfigurazioneTurniService configurazioneTurniService;
+    private final GruppoPattuglieService gruppoPattuglieService;
 
     public AdminController(UtenteService utenteService, PattugliaService pattugliaService,
                             ObiettivoService obiettivoService, GeocodingService geocodingService,
-                            AggiornamentoCoordinateService aggiornamentoCoordinateService) {
+                            AggiornamentoCoordinateService aggiornamentoCoordinateService,
+                            ConfigurazioneTurniService configurazioneTurniService,
+                            GruppoPattuglieService gruppoPattuglieService) {
         this.utenteService = utenteService;
         this.pattugliaService = pattugliaService;
         this.obiettivoService = obiettivoService;
         this.geocodingService = geocodingService;
         this.aggiornamentoCoordinateService = aggiornamentoCoordinateService;
+        this.configurazioneTurniService = configurazioneTurniService;
+        this.gruppoPattuglieService = gruppoPattuglieService;
     }
 
     // ---- Utenti ----
@@ -183,5 +193,47 @@ public class AdminController {
                                             @RequestBody com.vigilanza.pattuglie.dto.NuovoObiettivoRequest request) {
         var obiettivo = obiettivoService.crea(pattugliaId, request);
         return ResponseEntity.ok(Map.of("id", obiettivo.getId()));
+    }
+
+    // ---- Turni predefiniti (Mattina/Pomeriggio/Notte) ----
+
+    @GetMapping("/turni")
+    public ConfigurazioneTurniDTO leggiTurni() {
+        return configurazioneTurniService.leggi();
+    }
+
+    @PutMapping("/turni")
+    public ConfigurazioneTurniDTO aggiornaTurni(@RequestBody ConfigurazioneTurniDTO richiesta, HttpServletRequest httpRequest) {
+        return configurazioneTurniService.aggiorna(richiesta, AuthenticatedUser.getUtenteId(), httpRequest.getRemoteAddr());
+    }
+
+    // ---- Accorpamento pattuglie ----
+
+    @GetMapping("/gruppi-pattuglie")
+    public List<GruppoPattuglieDTO> listaGruppiPattuglie() {
+        return gruppoPattuglieService.findTutti();
+    }
+
+    @PostMapping("/gruppi-pattuglie")
+    public GruppoPattuglieDTO creaGruppoPattuglie(@RequestBody Map<String, String> body, HttpServletRequest httpRequest) {
+        return gruppoPattuglieService.crea(body.get("nome"), AuthenticatedUser.getUtenteId(), httpRequest.getRemoteAddr());
+    }
+
+    @DeleteMapping("/gruppi-pattuglie/{gruppoId}")
+    public ResponseEntity<Void> eliminaGruppoPattuglie(@PathVariable Long gruppoId, HttpServletRequest httpRequest) {
+        gruppoPattuglieService.elimina(gruppoId, AuthenticatedUser.getUtenteId(), httpRequest.getRemoteAddr());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/gruppi-pattuglie/{gruppoId}/membri/{pattugliaId}")
+    public GruppoPattuglieDTO aggiungiMembroGruppo(@PathVariable Long gruppoId, @PathVariable Long pattugliaId,
+                                                    HttpServletRequest httpRequest) {
+        return gruppoPattuglieService.aggiungiMembro(gruppoId, pattugliaId, AuthenticatedUser.getUtenteId(), httpRequest.getRemoteAddr());
+    }
+
+    @DeleteMapping("/gruppi-pattuglie/{gruppoId}/membri/{pattugliaId}")
+    public GruppoPattuglieDTO rimuoviMembroGruppo(@PathVariable Long gruppoId, @PathVariable Long pattugliaId,
+                                                   HttpServletRequest httpRequest) {
+        return gruppoPattuglieService.rimuoviMembro(gruppoId, pattugliaId, AuthenticatedUser.getUtenteId(), httpRequest.getRemoteAddr());
     }
 }

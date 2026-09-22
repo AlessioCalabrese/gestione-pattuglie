@@ -31,6 +31,16 @@ CREATE TABLE utente (
 );
 
 -- ------------------------------------------------------------
+-- Tabella GRUPPO_PATTUGLIE (accorpamento configurato dall'amministratore: le pattuglie di uno stesso
+-- gruppo vedono e possono flaggare anche gli obiettivi delle altre pattuglie del gruppo)
+-- ------------------------------------------------------------
+CREATE TABLE gruppo_pattuglie (
+                                  id              BIGINT IDENTITY(1,1) PRIMARY KEY,
+                                  nome            VARCHAR(150) NOT NULL,
+                                  data_creazione  DATETIME NOT NULL DEFAULT GETDATE()
+);
+
+-- ------------------------------------------------------------
 -- Tabella PATTUGLIA
 -- ------------------------------------------------------------
 CREATE TABLE pattuglia (
@@ -39,9 +49,11 @@ CREATE TABLE pattuglia (
                            descrizione             VARCHAR(255),
                            tipo_carburante         VARCHAR(20) NOT NULL DEFAULT 'BENZINA', -- Convertito ENUM in VARCHAR + CHECK
                            attiva                  BIT NOT NULL DEFAULT 1,
+                           gruppo_id               BIGINT, -- NULL = nessun accorpamento con altre pattuglie
                            data_creazione          DATETIME NOT NULL DEFAULT GETDATE(),
 
-                           CONSTRAINT chk_pattuglia_carburante CHECK (tipo_carburante IN ('BENZINA', 'GASOLIO'))
+                           CONSTRAINT chk_pattuglia_carburante CHECK (tipo_carburante IN ('BENZINA', 'GASOLIO')),
+                           FOREIGN KEY (gruppo_id) REFERENCES gruppo_pattuglie(id) ON DELETE SET NULL
 );
 
 -- Relazione N:N tra utenti abilitati e pattuglie che possono selezionare
@@ -65,25 +77,45 @@ CREATE TABLE obiettivo (
                            latitudine              DECIMAL(10, 7) NOT NULL,
                            longitudine             DECIMAL(10, 7) NOT NULL,
                            priorita                BIT NOT NULL DEFAULT 0,
+                           tipo_obiettivo          VARCHAR(20) NOT NULL DEFAULT 'ISPEZIONE', -- Convertito ENUM in VARCHAR + CHECK
                            telefono_riferimento    VARCHAR(20), -- cellulare in formato internazionale, sole cifre (es. 393331234567)
-                           ora_inizio             TIME,
-                           ora_fine                TIME,
-                           ripetizioni_giornaliere INT NOT NULL DEFAULT 1,
                            ordine_visita           INT,
                            attivo                  BIT NOT NULL DEFAULT 1,
                            data_creazione          DATETIME NOT NULL DEFAULT GETDATE(),
-                           FOREIGN KEY (pattuglia_id) REFERENCES pattuglia(id) ON DELETE CASCADE
+                           FOREIGN KEY (pattuglia_id) REFERENCES pattuglia(id) ON DELETE CASCADE,
+                           CONSTRAINT chk_obiettivo_tipo CHECK (tipo_obiettivo IN ('DATIX','ISPEZIONE', 'BIGLIETTAZIONE'))
 );
 
--- Giorni della settimana in cui l'obiettivo è attivo
-CREATE TABLE obiettivo_giorno_attivo (
-                                         obiettivo_id    BIGINT NOT NULL,
-                                         giorno          VARCHAR(15) NOT NULL, -- Convertito ENUM in VARCHAR + CHECK
-                                         PRIMARY KEY (obiettivo_id, giorno),
+-- Fasce orarie di servizio: un obiettivo può averne più di una nello stesso giorno (es. mattina e sera)
+-- e fasce diverse in giorni diversi. Vuota = mai visibile alle pattuglie (va configurata esplicitamente).
+CREATE TABLE obiettivo_fascia_oraria (
+                                         obiettivo_id            BIGINT NOT NULL,
+                                         giorno                  VARCHAR(15) NOT NULL, -- Convertito ENUM in VARCHAR + CHECK
+                                         ora_inizio              TIME, -- NULL = nessun vincolo dall'inizio della giornata
+                                         ora_fine                TIME, -- NULL = nessun vincolo fino alla fine della giornata
+                                         ripetizioni_richieste   INT NOT NULL DEFAULT 1, -- quante volte va flaggato in questa fascia
                                          FOREIGN KEY (obiettivo_id) REFERENCES obiettivo(id) ON DELETE CASCADE,
 
-                                         CONSTRAINT chk_obiettivo_giorno CHECK (giorno IN ('LUNEDI','MARTEDI','MERCOLEDI','GIOVEDI','VENERDI','SABATO','DOMENICA'))
+                                         CONSTRAINT chk_obiettivo_fascia_giorno CHECK (giorno IN ('LUNEDI','MARTEDI','MERCOLEDI','GIOVEDI','VENERDI','SABATO','DOMENICA'))
 );
+
+CREATE INDEX idx_obiettivo_fascia_oraria_obiettivo ON obiettivo_fascia_oraria(obiettivo_id);
+
+-- ------------------------------------------------------------
+-- Tabella CONFIGURAZIONE_TURNI (riga singola: orari di default dei turni Mattina/Pomeriggio/Notte,
+-- usati come proposta rapida per le fasce orarie degli obiettivi, modificabili dall'amministratore)
+-- ------------------------------------------------------------
+CREATE TABLE configurazione_turni (
+                                       id                  BIGINT PRIMARY KEY,
+                                       mattina_inizio      TIME NOT NULL DEFAULT '06:00',
+                                       mattina_fine        TIME NOT NULL DEFAULT '14:00',
+                                       pomeriggio_inizio   TIME NOT NULL DEFAULT '14:00',
+                                       pomeriggio_fine     TIME NOT NULL DEFAULT '22:00',
+                                       notte_inizio        TIME NOT NULL DEFAULT '22:00',
+                                       notte_fine          TIME NOT NULL DEFAULT '06:00' -- del giorno successivo a notte_inizio
+);
+
+INSERT INTO configurazione_turni (id) VALUES (1);
 
 -- ------------------------------------------------------------
 -- Tabella OBIETTIVO_FLAG  (append-only)
@@ -130,5 +162,6 @@ GO
 -- Utente amministratore di default
 -- ------------------------------------------------------------
 INSERT INTO utente (username, password, nome, cognome, ruolo)
-VALUES ('admin', '$2b$12$YElgNkNDdLJBxRmHNeQG5.jOZe/dGP0VBjpKBaA2O16Vs5AMDYjpe', 'Admin', 'Sistema', 'ADMIN');
+VALUES ('admin', '$2b$12$YElgNkNDdLJBxRmHNeQG5.jOZe/dGP0VBjpKBaA2O16Vs5AMDYjpe', 'Admin', 'Sistema', 'ADMIN'),
+(N'a.calabrese', N'$2a$10$M62o//CJYgJfNWDAQJ/Z/u/XD.BlVK7GkmBLA3N6LuK98vGvqXrP2', N'Alessio', N'Calabrese', N'PATTUGLIA', N'Ale123', 1, '2026-09-21 16:16:11.723');
 GO

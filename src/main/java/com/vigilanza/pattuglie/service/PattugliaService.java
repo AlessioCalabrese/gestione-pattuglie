@@ -170,10 +170,11 @@ public class PattugliaService {
                 o.getVia(), o.getComune(), o.getLatitudine(), o.getLongitudine(),
                 o.getOrdineVisita(), o.isAttivo());
         dto.setPriorita(o.isPriorita());
-        dto.setGiorniAttivi(o.getGiorniAttivi());
-        dto.setOraInizio(o.getOraInizio());
-        dto.setOraFine(o.getOraFine());
-        dto.setRipetizioniGiornaliere(o.getRipetizioniGiornaliere());
+        dto.setTipoObiettivo(o.getTipoObiettivo());
+        dto.setFasceOrarie(o.getFasceOrarie().stream()
+                .map(f -> new com.vigilanza.pattuglie.dto.FasciaOrariaDTO(
+                        f.getGiorno(), f.getOraInizio(), f.getOraFine(), f.getRipetizioniRichieste()))
+                .toList());
         return dto;
     }
 }

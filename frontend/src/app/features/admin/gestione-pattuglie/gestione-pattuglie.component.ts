@@ -2,7 +2,10 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, debounceTime, distinctUntilChanged, switchMap, of, catchError } from 'rxjs';
-import { AdminService, Pattuglia, PattugliaRicerca, NuovoObiettivo, GiornoSettimana, StatoAggiornamentoCoordinate, PropostaIndirizzo } from '../../../core/services/admin.service';
+import {
+  AdminService, Pattuglia, PattugliaRicerca, NuovoObiettivo, GiornoSettimana, FasciaOraria,
+  StatoAggiornamentoCoordinate, PropostaIndirizzo, ConfigurazioneTurni, GruppoPattuglie, MembroGruppo
+} from '../../../core/services/admin.service';
 import { Obiettivo } from '../../../core/services/pattuglia.service';
 
 interface GiornoOpzione {
@@ -17,10 +20,94 @@ interface GiornoOpzione {
   template: `
     <div class="intestazione-pagina">
       <h1>Gestione Pattuglie e Obiettivi</h1>
+      <button type="button" class="btn-secondario" (click)="toggleTurni()">
+        {{ turniEspansi ? 'Chiudi turni predefiniti' : 'Turni predefiniti' }}
+      </button>
+      <button type="button" class="btn-secondario" (click)="toggleGruppi()">
+        {{ gruppiEspansi ? 'Chiudi accorpamento pattuglie' : 'Accorpamento pattuglie' }}
+      </button>
       <button type="button" class="btn-aggiorna-coordinate" (click)="aggiornaCoordinate()"
               [disabled]="aggiornamentoInCorso">
         {{ aggiornamentoInCorso ? 'Aggiornamento in corso…' : 'Aggiorna coordinate obiettivi' }}
       </button>
+    </div>
+
+    <div class="pannello-turni" *ngIf="turniEspansi">
+      <h3>Turni predefiniti</h3>
+      <p class="hint">
+        Orari standard proposti come punto di partenza quando configuri le fasce orarie di un obiettivo
+        (restano comunque modificabili fascia per fascia). La Notte attraversa la mezzanotte: l'ora di
+        fine è del giorno successivo a quella di inizio.
+      </p>
+      <form class="form-turni" (ngSubmit)="salvaTurni()" *ngIf="turni as t">
+        <div class="turno-riga">
+          <strong>Mattina</strong>
+          <input type="time" [(ngModel)]="t.mattinaInizio" name="mattinaInizio" required />
+          <span>—</span>
+          <input type="time" [(ngModel)]="t.mattinaFine" name="mattinaFine" required />
+        </div>
+        <div class="turno-riga">
+          <strong>Pomeriggio</strong>
+          <input type="time" [(ngModel)]="t.pomeriggioInizio" name="pomeriggioInizio" required />
+          <span>—</span>
+          <input type="time" [(ngModel)]="t.pomeriggioFine" name="pomeriggioFine" required />
+        </div>
+        <div class="turno-riga">
+          <strong>Notte</strong>
+          <input type="time" [(ngModel)]="t.notteInizio" name="notteInizio" required />
+          <span>— (giorno dopo)</span>
+          <input type="time" [(ngModel)]="t.notteFine" name="notteFine" required />
+        </div>
+        <button type="submit">Salva turni</button>
+        <p class="messaggio errore" *ngIf="messaggioTurni">{{ messaggioTurni }}</p>
+      </form>
+    </div>
+
+    <div class="pannello-gruppi" *ngIf="gruppiEspansi">
+      <h3>Accorpamento pattuglie</h3>
+      <p class="hint">
+        Le pattuglie di uno stesso gruppo vedono e possono flaggare anche gli obiettivi delle altre
+        pattuglie del gruppo. Una pattuglia può appartenere al massimo a un gruppo.
+      </p>
+      <form class="form-nuovo-gruppo" (ngSubmit)="creaGruppo()">
+        <input type="text" [(ngModel)]="nomeNuovoGruppo" name="nomeNuovoGruppo"
+               placeholder="Nome del nuovo gruppo (es. Zona Nord unificata)" required />
+        <button type="submit">Crea gruppo</button>
+      </form>
+      <p class="messaggio errore" *ngIf="messaggioGruppi">{{ messaggioGruppi }}</p>
+
+      <div class="gruppo" *ngFor="let g of gruppiPattuglie">
+        <div class="gruppo-intestazione" (click)="toggleGruppoEspanso(g.id)">
+          <strong>{{ g.nome }}</strong>
+          <span class="hint">{{ g.membri.length }} pattuglie</span>
+          <button type="button" class="btn-elimina" (click)="eliminaGruppo(g, $event)">Elimina gruppo</button>
+        </div>
+        <div class="gruppo-corpo" *ngIf="gruppoEspanso === g.id">
+          <ul class="lista-associate" *ngIf="g.membri.length > 0">
+            <li *ngFor="let m of g.membri">
+              <span>{{ m.nome }} <small>{{ m.descrizione }}</small><em *ngIf="!m.attiva"> — disattivata</em></span>
+              <button type="button" class="btn-elimina" (click)="rimuoviDaGruppo(g, m)">Rimuovi</button>
+            </li>
+          </ul>
+          <p class="hint" *ngIf="g.membri.length === 0">Nessuna pattuglia in questo gruppo.</p>
+
+          <div class="ricerca-pattuglie">
+            <input type="search" [(ngModel)]="ricercaGruppoPattuglia" [name]="'ricercaGruppo' + g.id"
+                   placeholder="Cerca pattuglia da aggiungere" (keyup.enter)="cercaPattuglieGruppo()" />
+            <button type="button" (click)="cercaPattuglieGruppo()">Cerca</button>
+          </div>
+          <ul class="lista-associate" *ngIf="risultatiGruppo.length > 0">
+            <li *ngFor="let p of risultatiGruppo">
+              <span>{{ p.nome }} <small>{{ p.descrizione }}</small></span>
+              <button type="button" [disabled]="giaNelGruppo(g, p.id)" (click)="aggiungiAGruppo(g, p)">
+                {{ giaNelGruppo(g, p.id) ? 'Già presente' : 'Aggiungi' }}
+              </button>
+            </li>
+          </ul>
+          <p class="hint" *ngIf="cercatoGruppo && risultatiGruppo.length === 0">Nessuna pattuglia trovata.</p>
+        </div>
+      </div>
+      <p class="hint" *ngIf="gruppiPattuglie.length === 0">Nessun gruppo configurato.</p>
     </div>
 
     <div class="pannello-coordinate" *ngIf="statoCoordinate && statoCoordinate.stato !== 'MAI_ESEGUITO'"
@@ -127,7 +214,9 @@ interface GiornoOpzione {
                 [class.trovato]="corrispondeARicerca(o)">
               <div>
                 <strong>{{ o.nome }}</strong> — {{ o.indirizzo }}
+                <span class="badge-tipo">{{ o.tipoObiettivo === 'BIGLIETTAZIONE' ? 'Bigliettazione' : 'Ispezione' }}</span>
                 <span class="telefono" *ngIf="o.telefonoRiferimento">· WhatsApp: +{{ o.telefonoRiferimento }}</span>
+                <div class="fasce-riepilogo">{{ formattaFasceRiepilogo(o.fasceOrarie) }}</div>
               </div>
               <button type="button" (click)="modificaObiettivo(o)">Modifica</button>
             </li>
@@ -141,6 +230,11 @@ interface GiornoOpzione {
           <h3>{{ obiettivoInModifica ? 'Modifica obiettivo' : 'Aggiungi obiettivo' }}</h3>
           <form class="form-obiettivo" (ngSubmit)="salvaObiettivo(p.id)">
             <input type="text" [(ngModel)]="nuovoObiettivo.nome" name="nomeObiettivo" placeholder="Nome obiettivo" required />
+
+            <select [(ngModel)]="nuovoObiettivo.tipoObiettivo" name="tipoObiettivo">
+              <option value="ISPEZIONE">Ispezione</option>
+              <option value="BIGLIETTAZIONE">Bigliettazione</option>
+            </select>
 
             <div class="riga-indirizzo">
               <input
@@ -168,31 +262,36 @@ interface GiornoOpzione {
             </label>
 
             <div class="blocco-pianificazione">
-              <p class="sottotitolo">Giorni di servizio (obbligatorio: seleziona almeno un giorno)</p>
-              <div class="giorni-settimana">
-                <label *ngFor="let g of giorniDisponibili" class="chip-giorno" [class.selezionato]="isGiornoSelezionato(g.valore)">
-                  <input type="checkbox" [checked]="isGiornoSelezionato(g.valore)" (change)="toggleGiorno(g.valore)" />
-                  {{ g.etichetta }}
-                </label>
-              </div>
-
-              <p class="sottotitolo">Fascia oraria di servizio (vuota = nessun vincolo)</p>
-              <div class="riga-orario">
-                <input type="time" [(ngModel)]="nuovoObiettivo.oraInizio" name="oraInizio" />
+              <p class="sottotitolo">
+                Fasce orarie di servizio (obbligatorio: aggiungi almeno una fascia — puoi averne più
+                di una nello stesso giorno, es. mattina e sera, e giorni diversi possono avere fasce diverse)
+              </p>
+              <div class="fascia-riga" *ngFor="let f of nuovoObiettivo.fasceOrarie; let i = index">
+                <select [(ngModel)]="f.giorno" [name]="'fasciaGiorno' + i">
+                  <option *ngFor="let g of giorniDisponibili" [value]="g.valore">{{ g.etichetta }}</option>
+                </select>
+                <select (change)="applicaTurno(f, $any($event.target).value)" title="Precompila con un turno standard">
+                  <option value="">Personalizza…</option>
+                  <option value="MATTINA">Turno Mattina</option>
+                  <option value="POMERIGGIO">Turno Pomeriggio</option>
+                  <option value="NOTTE">Turno Notte</option>
+                </select>
+                <input type="time" [(ngModel)]="f.oraInizio" [name]="'fasciaInizio' + i" title="Ora inizio (vuota = da mezzanotte)" />
                 <span>—</span>
-                <input type="time" [(ngModel)]="nuovoObiettivo.oraFine" name="oraFine" />
+                <input type="time" [(ngModel)]="f.oraFine" [name]="'fasciaFine' + i" title="Ora fine (vuota = fino a mezzanotte; se precede l'inizio, la fascia è notturna e finisce il giorno dopo)" />
+                <input type="number" min="1" [(ngModel)]="f.ripetizioniRichieste" [name]="'fasciaRipetizioni' + i"
+                       class="campo-ripetizioni" title="Ripetizioni richieste in questa fascia" />
+                <button type="button" class="btn-rimuovi-fascia" (click)="rimuoviFascia(i)" title="Rimuovi fascia">✕</button>
               </div>
-
-              <p class="sottotitolo">Ripetizioni richieste nella giornata/fascia</p>
-              <input type="number" min="1" [(ngModel)]="nuovoObiettivo.ripetizioniGiornaliere" name="ripetizioniGiornaliere" class="campo-ripetizioni" />
+              <button type="button" class="btn-aggiungi-fascia" (click)="aggiungiFascia()">+ Aggiungi fascia oraria</button>
             </div>
 
-            <button type="submit" [disabled]="!coordinateTrovate || nuovoObiettivo.giorniAttivi.length === 0">
+            <button type="submit" [disabled]="!coordinateTrovate || nuovoObiettivo.fasceOrarie.length === 0">
               {{ obiettivoInModifica ? 'Salva modifiche' : 'Aggiungi obiettivo' }}
             </button>
             <button type="button" *ngIf="obiettivoInModifica" (click)="annullaModifica()">Annulla modifica</button>
-            <p class="avviso-validazione" *ngIf="coordinateTrovate && nuovoObiettivo.giorniAttivi.length === 0">
-              Seleziona almeno un giorno di servizio per poter salvare l'obiettivo.
+            <p class="avviso-validazione" *ngIf="coordinateTrovate && nuovoObiettivo.fasceOrarie.length === 0">
+              Aggiungi almeno una fascia oraria di servizio per poter salvare l'obiettivo.
             </p>
           </form>
 
@@ -265,6 +364,21 @@ export class GestionePattuglieComponent implements OnInit, OnDestroy {
   indirizzoNormalizzato = '';
   erroreGeocodifica = '';
 
+  // Turni predefiniti
+  turniEspansi = false;
+  turni: ConfigurazioneTurni | null = null;
+  messaggioTurni = '';
+
+  // Accorpamento pattuglie
+  gruppiEspansi = false;
+  gruppiPattuglie: GruppoPattuglie[] = [];
+  messaggioGruppi = '';
+  nomeNuovoGruppo = '';
+  gruppoEspanso: number | null = null;
+  ricercaGruppoPattuglia = '';
+  risultatiGruppo: PattugliaRicerca[] = [];
+  cercatoGruppo = false;
+
   private indirizzoSubject = new Subject<string>();
   private ricercaSubject = new Subject<void>();
 
@@ -305,6 +419,7 @@ export class GestionePattuglieComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.carica();
+    this.caricaTurni(); // servono anche per il precompilamento rapido delle fasce, senza aprire il pannello turni
     // Se un aggiornamento era in corso o ha proposte ancora da confermare (es. pagina ricaricata) le si riprende.
     this.adminService.statoAggiornamentoCoordinate().subscribe(stato => {
       if (stato.stato === 'IN_CORSO' || stato.proposte.length > 0) {
@@ -404,9 +519,9 @@ export class GestionePattuglieComponent implements OnInit, OnDestroy {
 
   private obiettivoVuoto(): NuovoObiettivo {
     return {
-      nome: '', via: '', comune: '',
+      nome: '', tipoObiettivo: 'ISPEZIONE', via: '', comune: '',
       latitudine: 0, longitudine: 0, priorita: false,
-      giorniAttivi: [], oraInizio: null, oraFine: null, ripetizioniGiornaliere: 1,
+      fasceOrarie: [],
       telefonoRiferimento: null
     };
   }
@@ -419,18 +534,159 @@ export class GestionePattuglieComponent implements OnInit, OnDestroy {
     this.indirizzoSubject.next(indirizzoCompleto);
   }
 
-  isGiornoSelezionato(giorno: GiornoSettimana): boolean {
-    return this.nuovoObiettivo.giorniAttivi.includes(giorno);
+  aggiungiFascia(): void {
+    this.nuovoObiettivo.fasceOrarie.push({ giorno: 'LUNEDI', oraInizio: null, oraFine: null, ripetizioniRichieste: 1 });
   }
 
-  toggleGiorno(giorno: GiornoSettimana): void {
-    const giorni = this.nuovoObiettivo.giorniAttivi;
-    const indice = giorni.indexOf(giorno);
-    if (indice >= 0) {
-      giorni.splice(indice, 1);
-    } else {
-      giorni.push(giorno);
+  rimuoviFascia(indice: number): void {
+    this.nuovoObiettivo.fasceOrarie.splice(indice, 1);
+  }
+
+  /** Precompila ora inizio/fine di una fascia con l'orario del turno standard scelto (restano poi modificabili). */
+  applicaTurno(fascia: FasciaOraria, turno: string): void {
+    if (!this.turni) {
+      return;
     }
+    if (turno === 'MATTINA') {
+      fascia.oraInizio = this.turni.mattinaInizio.substring(0, 5);
+      fascia.oraFine = this.turni.mattinaFine.substring(0, 5);
+    } else if (turno === 'POMERIGGIO') {
+      fascia.oraInizio = this.turni.pomeriggioInizio.substring(0, 5);
+      fascia.oraFine = this.turni.pomeriggioFine.substring(0, 5);
+    } else if (turno === 'NOTTE') {
+      fascia.oraInizio = this.turni.notteInizio.substring(0, 5);
+      fascia.oraFine = this.turni.notteFine.substring(0, 5);
+    }
+  }
+
+  // ---- Turni predefiniti ----
+
+  toggleTurni(): void {
+    this.turniEspansi = !this.turniEspansi;
+    if (this.turniEspansi && !this.turni) {
+      this.caricaTurni();
+    }
+  }
+
+  private caricaTurni(): void {
+    this.adminService.leggiTurni().subscribe({
+      next: t => this.turni = t,
+      error: err => this.messaggioTurni = err?.error?.errore ?? 'Errore nel caricamento dei turni.'
+    });
+  }
+
+  salvaTurni(): void {
+    if (!this.turni) {
+      return;
+    }
+    this.messaggioTurni = '';
+    this.adminService.aggiornaTurni(this.turni).subscribe({
+      next: t => {
+        this.turni = t;
+        this.messaggioTurni = 'Turni aggiornati con successo.';
+      },
+      error: err => this.messaggioTurni = err?.error?.errore ?? 'Errore durante il salvataggio dei turni.'
+    });
+  }
+
+  // ---- Accorpamento pattuglie ----
+
+  toggleGruppi(): void {
+    this.gruppiEspansi = !this.gruppiEspansi;
+    if (this.gruppiEspansi) {
+      this.caricaGruppi();
+    }
+  }
+
+  private caricaGruppi(): void {
+    this.adminService.listaGruppiPattuglie().subscribe({
+      next: g => this.gruppiPattuglie = g,
+      error: err => this.messaggioGruppi = err?.error?.errore ?? 'Errore nel caricamento dei gruppi.'
+    });
+  }
+
+  creaGruppo(): void {
+    this.messaggioGruppi = '';
+    this.adminService.creaGruppoPattuglie(this.nomeNuovoGruppo.trim()).subscribe({
+      next: () => {
+        this.nomeNuovoGruppo = '';
+        this.caricaGruppi();
+      },
+      error: err => this.messaggioGruppi = err?.error?.errore ?? 'Errore durante la creazione del gruppo.'
+    });
+  }
+
+  eliminaGruppo(gruppo: GruppoPattuglie, evento: Event): void {
+    evento.stopPropagation();
+    if (!confirm(`Eliminare il gruppo "${gruppo.nome}"? Le pattuglie tornano indipendenti, i loro obiettivi restano invariati.`)) {
+      return;
+    }
+    this.messaggioGruppi = '';
+    this.adminService.eliminaGruppoPattuglie(gruppo.id).subscribe({
+      next: () => {
+        if (this.gruppoEspanso === gruppo.id) {
+          this.gruppoEspanso = null;
+        }
+        this.caricaGruppi();
+      },
+      error: err => this.messaggioGruppi = err?.error?.errore ?? 'Errore durante l\'eliminazione del gruppo.'
+    });
+  }
+
+  toggleGruppoEspanso(gruppoId: number): void {
+    this.gruppoEspanso = this.gruppoEspanso === gruppoId ? null : gruppoId;
+    this.ricercaGruppoPattuglia = '';
+    this.risultatiGruppo = [];
+    this.cercatoGruppo = false;
+  }
+
+  giaNelGruppo(gruppo: GruppoPattuglie, pattugliaId: number): boolean {
+    return gruppo.membri.some(m => m.id === pattugliaId);
+  }
+
+  cercaPattuglieGruppo(): void {
+    this.adminService.cercaPattuglie(this.ricercaGruppoPattuglia.trim(), 0).subscribe({
+      next: r => {
+        this.risultatiGruppo = r.contenuto;
+        this.cercatoGruppo = true;
+      },
+      error: err => this.messaggioGruppi = err?.error?.errore ?? 'Errore nella ricerca delle pattuglie.'
+    });
+  }
+
+  aggiungiAGruppo(gruppo: GruppoPattuglie, pattuglia: PattugliaRicerca | MembroGruppo): void {
+    this.messaggioGruppi = '';
+    this.adminService.aggiungiMembroGruppo(gruppo.id, pattuglia.id).subscribe({
+      next: () => this.caricaGruppi(),
+      error: err => this.messaggioGruppi = err?.error?.errore ?? 'Errore durante l\'aggiunta al gruppo.'
+    });
+  }
+
+  rimuoviDaGruppo(gruppo: GruppoPattuglie, pattuglia: MembroGruppo): void {
+    this.messaggioGruppi = '';
+    this.adminService.rimuoviMembroGruppo(gruppo.id, pattuglia.id).subscribe({
+      next: () => this.caricaGruppi(),
+      error: err => this.messaggioGruppi = err?.error?.errore ?? 'Errore durante la rimozione dal gruppo.'
+    });
+  }
+
+  private readonly abbreviazioniGiorni: Record<string, string> = {
+    LUNEDI: 'Lun', MARTEDI: 'Mar', MERCOLEDI: 'Mer', GIOVEDI: 'Gio',
+    VENERDI: 'Ven', SABATO: 'Sab', DOMENICA: 'Dom'
+  };
+
+  /** Riepilogo leggibile delle fasce configurate, per l'elenco obiettivi (es. "Lun 08:00–12:00 (x1), Mar tutto il giorno (x2)"). */
+  formattaFasceRiepilogo(fasce: FasciaOraria[]): string {
+    if (!fasce || fasce.length === 0) {
+      return 'Nessuna fascia oraria configurata';
+    }
+    return fasce.map(f => {
+      const giorno = this.abbreviazioniGiorni[f.giorno] ?? f.giorno;
+      const orario = f.oraInizio || f.oraFine
+        ? `${(f.oraInizio ?? '00:00').substring(0, 5)}–${(f.oraFine ?? '24:00').substring(0, 5)}`
+        : 'tutto il giorno';
+      return `${giorno} ${orario} (x${f.ripetizioniRichieste})`;
+    }).join(', ');
   }
 
   carica(): void {
@@ -498,12 +754,15 @@ export class GestionePattuglieComponent implements OnInit, OnDestroy {
     this.messaggio = '';
     this.obiettivoInModifica = o.id;
     this.nuovoObiettivo = {
-      nome: o.nome, via: o.via, comune: o.comune,
+      nome: o.nome, tipoObiettivo: o.tipoObiettivo, via: o.via, comune: o.comune,
       latitudine: o.latitudine, longitudine: o.longitudine, priorita: o.priorita,
-      giorniAttivi: [...o.giorniAttivi] as GiornoSettimana[],
-      oraInizio: o.oraInizio ? o.oraInizio.substring(0, 5) : null,
-      oraFine: o.oraFine ? o.oraFine.substring(0, 5) : null,
-      ripetizioniGiornaliere: o.ripetizioniGiornaliere,
+      // Copia profonda: modificare il form non deve toccare l'obiettivo originale finché non si salva.
+      fasceOrarie: o.fasceOrarie.map(f => ({
+        giorno: f.giorno,
+        oraInizio: f.oraInizio ? f.oraInizio.substring(0, 5) : null,
+        oraFine: f.oraFine ? f.oraFine.substring(0, 5) : null,
+        ripetizioniRichieste: f.ripetizioniRichieste
+      })),
       telefonoRiferimento: o.telefonoRiferimento ? '+' + o.telefonoRiferimento : null
     };
     this.coordinateTrovate = true;

@@ -1,16 +1,18 @@
 package com.vigilanza.pattuglie.dto;
 
-import com.vigilanza.pattuglie.entity.GiornoSettimana;
+import com.vigilanza.pattuglie.entity.TipoObiettivo;
 
 import java.math.BigDecimal;
-import java.time.LocalTime;
-import java.util.Set;
+import java.util.List;
 
 public class ObiettivoDTO {
 
     private Long id;
     private Long pattugliaId;
+    /** Nome della pattuglia proprietaria; utile quando la lista mostra anche obiettivi di pattuglie accorpate. */
+    private String pattugliaNome;
     private String nome;
+    private TipoObiettivo tipoObiettivo;
 
     private String via;
     private String comune;
@@ -23,10 +25,10 @@ public class ObiettivoDTO {
     private boolean attivo;
     private boolean priorita;
 
-    private Set<GiornoSettimana> giorniAttivi;
-    private LocalTime oraInizio;
-    private LocalTime oraFine;
-    private int ripetizioniGiornaliere;
+    /** Tutte le fasce orarie configurate (qualunque giorno), per la vista amministratore. */
+    private List<FasciaOrariaDTO> fasceOrarie;
+    /** Fasce orarie di oggi con il relativo stato dei flag, per la pattuglia. Vuoto se oggi non è un giorno di servizio. */
+    private List<FasciaOggiDTO> fasceOggi;
 
     private String telefonoRiferimento;
     /** Link wa.me con il messaggio di avvenuto check già compilato; valorizzato solo se c'è un telefono e un flag oggi. */
@@ -36,8 +38,8 @@ public class ObiettivoDTO {
     private Boolean flaggatoOggi;
     private String ultimoFlagDataOra;
     private int numeroFlagOggi;
-    private boolean completatoOggi; // numeroFlagOggi >= ripetizioniGiornaliere
-    private boolean inServizioOra;  // rispetta la pianificazione (giorno + fascia oraria) in questo momento
+    private boolean completatoOggi; // tutte le fasce orarie di oggi hanno raggiunto le ripetizioni richieste
+    private boolean inServizioOra;  // l'ora attuale rientra in almeno una fascia di oggi
 
     public ObiettivoDTO() {
     }
@@ -73,12 +75,28 @@ public class ObiettivoDTO {
         this.pattugliaId = pattugliaId;
     }
 
+    public String getPattugliaNome() {
+        return pattugliaNome;
+    }
+
+    public void setPattugliaNome(String pattugliaNome) {
+        this.pattugliaNome = pattugliaNome;
+    }
+
     public String getNome() {
         return nome;
     }
 
     public void setNome(String nome) {
         this.nome = nome;
+    }
+
+    public TipoObiettivo getTipoObiettivo() {
+        return tipoObiettivo;
+    }
+
+    public void setTipoObiettivo(TipoObiettivo tipoObiettivo) {
+        this.tipoObiettivo = tipoObiettivo;
     }
 
     public String getVia() {
@@ -145,36 +163,20 @@ public class ObiettivoDTO {
         this.priorita = priorita;
     }
 
-    public Set<GiornoSettimana> getGiorniAttivi() {
-        return giorniAttivi;
+    public List<FasciaOrariaDTO> getFasceOrarie() {
+        return fasceOrarie;
     }
 
-    public void setGiorniAttivi(Set<GiornoSettimana> giorniAttivi) {
-        this.giorniAttivi = giorniAttivi;
+    public void setFasceOrarie(List<FasciaOrariaDTO> fasceOrarie) {
+        this.fasceOrarie = fasceOrarie;
     }
 
-    public LocalTime getOraInizio() {
-        return oraInizio;
+    public List<FasciaOggiDTO> getFasceOggi() {
+        return fasceOggi;
     }
 
-    public void setOraInizio(LocalTime oraInizio) {
-        this.oraInizio = oraInizio;
-    }
-
-    public LocalTime getOraFine() {
-        return oraFine;
-    }
-
-    public void setOraFine(LocalTime oraFine) {
-        this.oraFine = oraFine;
-    }
-
-    public int getRipetizioniGiornaliere() {
-        return ripetizioniGiornaliere;
-    }
-
-    public void setRipetizioniGiornaliere(int ripetizioniGiornaliere) {
-        this.ripetizioniGiornaliere = ripetizioniGiornaliere;
+    public void setFasceOggi(List<FasciaOggiDTO> fasceOggi) {
+        this.fasceOggi = fasceOggi;
     }
 
     public String getTelefonoRiferimento() {

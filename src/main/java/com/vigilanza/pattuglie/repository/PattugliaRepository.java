@@ -29,6 +29,9 @@ public interface PattugliaRepository extends JpaRepository<Pattuglia, Long> {
     @Query("SELECT p FROM Pattuglia p JOIN p.utentiAbilitati u WHERE u.id = :utenteId ORDER BY p.nome")
     List<Pattuglia> findAssociatePerUtente(Long utenteId);
 
+    // Pattuglie (attive o no) che appartengono a un dato gruppo di accorpamento
+    List<Pattuglia> findByGruppoIdOrderByNomeAsc(Long gruppoId);
+
     /**
      * Ricerca amministrativa: pattuglie (anche disattivate) il cui nome o descrizione, oppure il nome
      * di uno dei loro obiettivi attivi, contiene il testo cercato. "pattern" è già nel formato LIKE

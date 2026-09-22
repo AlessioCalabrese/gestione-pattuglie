@@ -82,20 +82,24 @@ import { AuthService } from '../../core/services/auth.service';
           <div class="dettagli">
             <h3>
               {{ o.nome }}
+              <span class="badge-tipo">{{ o.tipoObiettivo === 'BIGLIETTAZIONE' ? 'Bigliettazione' : 'Ispezione' }}</span>
               <span class="badge-priorita" *ngIf="o.priorita">Priorità</span>
               <span class="badge-fuori-servizio" *ngIf="!o.inServizioOra">Fuori servizio ora</span>
             </h3>
-            <p>{{ o.indirizzo }}</p>
-            <p class="pianificazione" *ngIf="o.oraInizio || o.oraFine || o.giorniAttivi.length">
-              <span *ngIf="o.giorniAttivi.length">{{ formattaGiorni(o.giorniAttivi) }}</span>
-              <span *ngIf="o.oraInizio || o.oraFine">
-                {{ o.giorniAttivi.length ? '·' : '' }} {{ o.oraInizio || '00:00' }}–{{ o.oraFine || '24:00' }}
-              </span>
+            <p>
+              {{ o.indirizzo }}
+              <span class="badge-pattuglia" *ngIf="o.pattugliaId !== pattugliaId">· {{ o.pattugliaNome }}</span>
             </p>
-            <span class="stato progresso" [class.completo]="o.completatoOggi">
-              {{ o.numeroFlagOggi }}/{{ o.ripetizioniGiornaliere }} completati oggi
-              <ng-container *ngIf="o.ultimoFlagDataOra"> — ultimo: {{ o.ultimoFlagDataOra }}</ng-container>
-            </span>
+            <div class="fasce-oggi" *ngIf="o.fasceOggi.length">
+              <span class="fascia-oggi" *ngFor="let f of o.fasceOggi"
+                    [class.completa]="f.completata" [class.in-corso]="f.inCorsoOra">
+                {{ (f.oraInizio || '00:00').substring(0, 5) }}–{{ (f.oraFine || '24:00').substring(0, 5) }}:
+                {{ f.numeroFlag }}/{{ f.ripetizioniRichieste }} completati
+                <ng-container *ngIf="f.continuaDaIeri"> · da ieri notte</ng-container>
+                <ng-container *ngIf="f.inCorsoOra"> · in corso</ng-container>
+              </span>
+            </div>
+            <span class="stato" *ngIf="o.ultimoFlagDataOra">Ultimo flag oggi: {{ o.ultimoFlagDataOra }}</span>
             <a class="btn-whatsapp" *ngIf="o.whatsappUrl" [href]="o.whatsappUrl" target="_blank" rel="noopener">
               Avvisa su WhatsApp
             </a>
@@ -141,15 +145,6 @@ export class ListaObiettiviComponent implements OnInit {
 
   caricaObiettivi(): void {
     this.pattugliaService.obiettiviDiPattuglia(this.pattugliaId).subscribe(o => this.obiettivi = o);
-  }
-
-  private readonly abbreviazioniGiorni: Record<string, string> = {
-    LUNEDI: 'Lun', MARTEDI: 'Mar', MERCOLEDI: 'Mer', GIOVEDI: 'Gio',
-    VENERDI: 'Ven', SABATO: 'Sab', DOMENICA: 'Dom'
-  };
-
-  formattaGiorni(giorni: string[]): string {
-    return giorni.map(g => this.abbreviazioniGiorni[g] ?? g).join(', ');
   }
 
   flagObiettivo(obiettivo: Obiettivo): void {

@@ -133,6 +133,23 @@ h1 {
   opacity: 0.6;
 }
 
+.badge-tipo {
+  display: inline-block;
+  margin-left: 0.5rem;
+  font-size: 0.65rem;
+  font-weight: bold;
+  color: #0a1f44;
+  background: #eef1f6;
+  padding: 0.1rem 0.5rem;
+  border-radius: 10px;
+  vertical-align: middle;
+}
+
+.badge-pattuglia {
+  color: #1a5fb4;
+  font-weight: 600;
+}
+
 .badge-priorita {
   display: inline-block;
   margin-left: 0.5rem;
@@ -157,22 +174,29 @@ h1 {
   vertical-align: middle;
 }
 
-.pianificazione {
-  font-size: 0.75rem;
-  color: #888;
-  margin: 0.2rem 0 0;
-}
-
-.stato.progresso {
-  display: block;
+.fasce-oggi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
   margin-top: 0.4rem;
-  font-size: 0.8rem;
-  color: #b26a00;
-  font-weight: bold;
 }
 
-.stato.progresso.completo {
+.fascia-oggi {
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: #b26a00;
+  background: #fff4e5;
+  padding: 0.2rem 0.5rem;
+  border-radius: 10px;
+}
+
+.fascia-oggi.completa {
   color: #2e7d32;
+  background: #eaf5ea;
+}
+
+.fascia-oggi.in-corso {
+  border: 1px solid #c9a227;
 }
 
 .ordine {

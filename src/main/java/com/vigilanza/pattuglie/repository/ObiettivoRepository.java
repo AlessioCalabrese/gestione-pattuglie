@@ -11,6 +11,9 @@ import java.util.List;
 public interface ObiettivoRepository extends JpaRepository<Obiettivo, Long> {
     List<Obiettivo> findByPattugliaIdAndAttivoTrueOrderByOrdineVisitaAsc(Long pattugliaId);
 
+    /** Come sopra, ma per più pattuglie insieme (usata quando la pattuglia è accorpata ad altre). */
+    List<Obiettivo> findByPattugliaIdInAndAttivoTrueOrderByOrdineVisitaAsc(Collection<Long> pattugliaIds);
+
     List<Obiettivo> findByAttivoTrue();
 
     Page<Obiettivo> findByPattugliaIdAndAttivoTrue(Long pattugliaId, Pageable pageable);

@@ -1,10 +1,9 @@
 package com.vigilanza.pattuglie.dto;
 
-import com.vigilanza.pattuglie.entity.GiornoSettimana;
+import com.vigilanza.pattuglie.entity.TipoObiettivo;
 
 import java.math.BigDecimal;
-import java.time.LocalTime;
-import java.util.Set;
+import java.util.List;
 
 public class NuovoObiettivoRequest {
 
@@ -14,16 +13,14 @@ public class NuovoObiettivoRequest {
     private BigDecimal latitudine;
     private BigDecimal longitudine;
     private boolean priorita;
+    private TipoObiettivo tipoObiettivo;
 
-    /** Giorni in cui l'obiettivo è in servizio. Vuoto/null = tutti i giorni. */
-    private Set<GiornoSettimana> giorniAttivi;
-
-    /** Fascia oraria di servizio, formato "HH:mm". Null = nessun vincolo. */
-    private LocalTime oraInizio;
-    private LocalTime oraFine;
-
-    /** Quante volte va flaggato nella giornata/fascia oraria. Default 1. */
-    private Integer ripetizioniGiornaliere;
+    /**
+     * Fasce orarie di servizio: ogni voce è legata a un giorno della settimana e può avere le proprie
+     * ripetizioni richieste. Un giorno può comparire più volte (es. mattina e sera). Obbligatorio: un
+     * obiettivo senza nessuna fascia non sarebbe mai visibile alle pattuglie.
+     */
+    private List<FasciaOrariaDTO> fasceOrarie;
 
     /** Cellulare di riferimento per l'avviso WhatsApp (opzionale). Accetta anche spazi e prefisso +39. */
     private String telefonoRiferimento;
@@ -87,35 +84,19 @@ public class NuovoObiettivoRequest {
         this.priorita = priorita;
     }
 
-    public Set<GiornoSettimana> getGiorniAttivi() {
-        return giorniAttivi;
+    public TipoObiettivo getTipoObiettivo() {
+        return tipoObiettivo;
     }
 
-    public void setGiorniAttivi(Set<GiornoSettimana> giorniAttivi) {
-        this.giorniAttivi = giorniAttivi;
+    public void setTipoObiettivo(TipoObiettivo tipoObiettivo) {
+        this.tipoObiettivo = tipoObiettivo;
     }
 
-    public LocalTime getOraInizio() {
-        return oraInizio;
+    public List<FasciaOrariaDTO> getFasceOrarie() {
+        return fasceOrarie;
     }
 
-    public void setOraInizio(LocalTime oraInizio) {
-        this.oraInizio = oraInizio;
-    }
-
-    public LocalTime getOraFine() {
-        return oraFine;
-    }
-
-    public void setOraFine(LocalTime oraFine) {
-        this.oraFine = oraFine;
-    }
-
-    public Integer getRipetizioniGiornaliere() {
-        return ripetizioniGiornaliere;
-    }
-
-    public void setRipetizioniGiornaliere(Integer ripetizioniGiornaliere) {
-        this.ripetizioniGiornaliere = ripetizioniGiornaliere;
+    public void setFasceOrarie(List<FasciaOrariaDTO> fasceOrarie) {
+        this.fasceOrarie = fasceOrarie;
     }
 }

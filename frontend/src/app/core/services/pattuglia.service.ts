@@ -10,10 +10,41 @@ export interface Pattuglia {
   preferita: boolean; // tra le preferite dell'utente loggato
 }
 
+export type GiornoSettimana = 'LUNEDI' | 'MARTEDI' | 'MERCOLEDI' | 'GIOVEDI' | 'VENERDI' | 'SABATO' | 'DOMENICA';
+
+export type TipoObiettivo = 'ISPEZIONE' | 'BIGLIETTAZIONE';
+
+/**
+ * Fascia oraria di servizio configurata su un obiettivo: un giorno può averne più di una (es. mattina e
+ * sera) e giorni diversi possono avere fasce diverse. oraInizio/oraFine null = nessun vincolo da
+ * quel lato (dall'inizio/fino alla fine della giornata).
+ */
+export interface FasciaOraria {
+  giorno: GiornoSettimana;
+  oraInizio: string | null; // "HH:mm:ss" in lettura dal server, "HH:mm" quando scritta dal form
+  oraFine: string | null;
+  ripetizioniRichieste: number;
+}
+
+/** Stato di una fascia oraria di oggi: quanti flag mancano e se è quella in corso adesso. */
+export interface FasciaOggi {
+  oraInizio: string | null;
+  oraFine: string | null;
+  ripetizioniRichieste: number;
+  numeroFlag: number;
+  completata: boolean;
+  inCorsoOra: boolean;
+  /** Vero se è la coda di un turno notturno iniziato ieri (es. 22:00–06:00), non un turno che inizia oggi. */
+  continuaDaIeri: boolean;
+}
+
 export interface Obiettivo {
   id: number;
   pattugliaId: number;
+  /** Nome della pattuglia proprietaria; utile quando la lista mostra anche obiettivi di pattuglie accorpate. */
+  pattugliaNome: string;
   nome: string;
+  tipoObiettivo: TipoObiettivo;
   via: string;
   comune: string;
   indirizzo: string;
@@ -22,10 +53,10 @@ export interface Obiettivo {
   ordineVisita: number | null;
   attivo: boolean;
   priorita: boolean;
-  giorniAttivi: string[];
-  oraInizio: string | null;
-  oraFine: string | null;
-  ripetizioniGiornaliere: number;
+  /** Tutte le fasce orarie configurate (qualunque giorno). */
+  fasceOrarie: FasciaOraria[];
+  /** Fasce orarie di oggi, con lo stato dei flag; vuoto se oggi non è un giorno di servizio. */
+  fasceOggi: FasciaOggi[];
   telefonoRiferimento: string | null;
   whatsappUrl: string | null; // presente solo se c'è un telefono e un flag oggi
   flaggatoOggi: boolean | null;

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Obiettivo } from './pattuglia.service';
+import { Obiettivo, GiornoSettimana, FasciaOraria, TipoObiettivo } from './pattuglia.service';
 
 export interface Utente {
   id: number;
@@ -80,20 +80,45 @@ export interface StatoAggiornamentoCoordinate {
   messaggio: string | null;
 }
 
-export type GiornoSettimana = 'LUNEDI' | 'MARTEDI' | 'MERCOLEDI' | 'GIOVEDI' | 'VENERDI' | 'SABATO' | 'DOMENICA';
-
 export interface NuovoObiettivo {
   nome: string;
+  tipoObiettivo: TipoObiettivo;
   via: string;
   comune: string;
   latitudine: number;
   longitudine: number;
   priorita: boolean;
-  giorniAttivi: GiornoSettimana[];   // vuoto = tutti i giorni
-  oraInizio: string | null;          // formato "HH:mm", null = nessun vincolo
-  oraFine: string | null;
-  ripetizioniGiornaliere: number;
+  /** Almeno una richiesta: un obiettivo senza fasce non sarebbe mai visibile alle pattuglie. */
+  fasceOrarie: FasciaOraria[];
   telefonoRiferimento: string | null; // cellulare per l'avviso WhatsApp dopo il flag, opzionale
+}
+
+// Riesportati per comodità di chi importa solo da admin.service (uso storico nei componenti admin).
+export type { GiornoSettimana, FasciaOraria, TipoObiettivo };
+
+/** Orari dei tre turni standard, usati come proposta rapida per le fasce orarie ("HH:mm"). Notte attraversa la mezzanotte. */
+export interface ConfigurazioneTurni {
+  mattinaInizio: string;
+  mattinaFine: string;
+  pomeriggioInizio: string;
+  pomeriggioFine: string;
+  notteInizio: string;
+  notteFine: string; // del giorno successivo a notteInizio
+}
+
+/** Pattuglia membro di un gruppo di accorpamento. */
+export interface MembroGruppo {
+  id: number;
+  nome: string;
+  descrizione: string;
+  attiva: boolean;
+}
+
+/** Gruppo di accorpamento: le pattuglie membro vedono e possono flaggare gli obiettivi le une delle altre. */
+export interface GruppoPattuglie {
+  id: number;
+  nome: string;
+  membri: MembroGruppo[];
 }
 
 export interface GeocodificaResult {
@@ -218,5 +243,37 @@ export class AdminService {
 
   geocodifica(indirizzo: string): Observable<GeocodificaResult> {
     return this.http.get<GeocodificaResult>('/api/admin/geocodifica', { params: { indirizzo } });
+  }
+
+  // ---- Turni predefiniti ----
+
+  leggiTurni(): Observable<ConfigurazioneTurni> {
+    return this.http.get<ConfigurazioneTurni>('/api/admin/turni');
+  }
+
+  aggiornaTurni(turni: ConfigurazioneTurni): Observable<ConfigurazioneTurni> {
+    return this.http.put<ConfigurazioneTurni>('/api/admin/turni', turni);
+  }
+
+  // ---- Accorpamento pattuglie ----
+
+  listaGruppiPattuglie(): Observable<GruppoPattuglie[]> {
+    return this.http.get<GruppoPattuglie[]>('/api/admin/gruppi-pattuglie');
+  }
+
+  creaGruppoPattuglie(nome: string): Observable<GruppoPattuglie> {
+    return this.http.post<GruppoPattuglie>('/api/admin/gruppi-pattuglie', { nome });
+  }
+
+  eliminaGruppoPattuglie(gruppoId: number): Observable<void> {
+    return this.http.delete<void>(`/api/admin/gruppi-pattuglie/${gruppoId}`);
+  }
+
+  aggiungiMembroGruppo(gruppoId: number, pattugliaId: number): Observable<GruppoPattuglie> {
+    return this.http.put<GruppoPattuglie>(`/api/admin/gruppi-pattuglie/${gruppoId}/membri/${pattugliaId}`, {});
+  }
+
+  rimuoviMembroGruppo(gruppoId: number, pattugliaId: number): Observable<GruppoPattuglie> {
+    return this.http.delete<GruppoPattuglie>(`/api/admin/gruppi-pattuglie/${gruppoId}/membri/${pattugliaId}`);
   }
 }
