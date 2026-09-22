@@ -20,7 +20,18 @@ public class OttimizzazioneRottaResponse {
     private BigDecimal risparmioCosto;   // in valuta, secondo prezzo carburante configurato
     private BigDecimal prezzoCarburanteAlLitro;
 
+    /** Link Google Maps del percorso consigliato: uno per ogni tratta di al massimo 10 tappe. */
+    private List<TrattaNavigatoreDTO> tratteNavigatore = List.of();
+
     public OttimizzazioneRottaResponse() {
+    }
+
+    public List<TrattaNavigatoreDTO> getTratteNavigatore() {
+        return tratteNavigatore;
+    }
+
+    public void setTratteNavigatore(List<TrattaNavigatoreDTO> tratteNavigatore) {
+        this.tratteNavigatore = tratteNavigatore;
     }
 
     public List<ObiettivoDTO> getObiettivi() {

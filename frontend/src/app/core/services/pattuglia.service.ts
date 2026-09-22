@@ -43,8 +43,16 @@ export interface FlagRequest {
   note?: string;
 }
 
+/** Tratta del percorso consigliato, apribile in Google Maps (al massimo 10 tappe per link). */
+export interface TrattaNavigatore {
+  numero: number;
+  tappe: string[]; // nomi degli obiettivi, nell'ordine di visita
+  url: string;
+}
+
 export interface RisultatoOttimizzazione {
   obiettivi: Obiettivo[];
+  tratteNavigatore: TrattaNavigatore[];
   obiettiviInServizioOggi: number;
   distanzaOriginaleKm: number;
   distanzaOttimizzataKm: number;

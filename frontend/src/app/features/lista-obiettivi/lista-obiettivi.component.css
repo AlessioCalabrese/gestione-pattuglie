@@ -221,6 +221,35 @@ h1 {
   flex-shrink: 0;
 }
 
+.navigatore {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #d5e3f7;
+}
+
+.tratta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.btn-maps {
+  display: inline-block;
+  padding: 10px 16px;
+  background: #1a73e8;
+  color: #fff;
+  border-radius: 6px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.tappe {
+  font-size: 0.85rem;
+  color: #5f6b7a;
+}
+
 .btn-whatsapp {
   display: inline-block;
   margin-top: 8px;

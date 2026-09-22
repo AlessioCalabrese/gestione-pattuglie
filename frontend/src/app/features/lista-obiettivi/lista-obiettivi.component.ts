@@ -52,6 +52,24 @@ import { AuthService } from '../../core/services/auth.service';
             Stima basata su distanza in linea d'aria e consumo medio generico. Include solo gli obiettivi
             pianificati per oggi in questa fascia oraria — gli altri restano visibili sotto come "fuori servizio".
           </p>
+
+          <div class="navigatore" *ngIf="r.tratteNavigatore?.length">
+            <h3>Navigatore Google Maps</h3>
+            <p class="hint">
+              Apri il link dal telefono per avviare la navigazione: le tappe sono nell'ordine consigliato e
+              Google Maps non le riordina.
+              <ng-container *ngIf="r.tratteNavigatore.length > 1">
+                Il percorso è diviso in {{ r.tratteNavigatore.length }} tratte (Google Maps accetta al massimo
+                10 tappe per volta): finita una tratta, apri la successiva.
+              </ng-container>
+            </p>
+            <div class="tratta" *ngFor="let t of r.tratteNavigatore">
+              <a class="btn-maps" [href]="t.url" target="_blank" rel="noopener">
+                {{ r.tratteNavigatore.length > 1 ? 'Tratta ' + t.numero + ' — ' : '' }}Apri in Google Maps
+              </a>
+              <span class="tappe">{{ t.tappe.join(' → ') }}</span>
+            </div>
+          </div>
         </ng-container>
       </div>
 

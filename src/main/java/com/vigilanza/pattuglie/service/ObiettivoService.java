@@ -36,6 +36,7 @@ public class ObiettivoService {
     private final LogSistemaService logSistemaService;
     private final FuelPriceService fuelPriceService;
     private final WhatsappMessageService whatsappMessageService;
+    private final NavigatoreService navigatoreService;
 
     /**
      * Massimo valore della colonna obiettivo_flag.precisione_metri (DECIMAL(6,2)). Un errore di 10 km o più
@@ -55,7 +56,8 @@ public class ObiettivoService {
                              RouteOptimizerService routeOptimizerService,
                              LogSistemaService logSistemaService,
                              FuelPriceService fuelPriceService,
-                             WhatsappMessageService whatsappMessageService) {
+                             WhatsappMessageService whatsappMessageService,
+                             NavigatoreService navigatoreService) {
         this.obiettivoRepository = obiettivoRepository;
         this.obiettivoFlagRepository = obiettivoFlagRepository;
         this.pattugliaRepository = pattugliaRepository;
@@ -64,6 +66,7 @@ public class ObiettivoService {
         this.logSistemaService = logSistemaService;
         this.fuelPriceService = fuelPriceService;
         this.whatsappMessageService = whatsappMessageService;
+        this.navigatoreService = navigatoreService;
     }
 
     public List<ObiettivoDTO> findByPattuglia(Long pattugliaId) {
@@ -253,6 +256,7 @@ public class ObiettivoService {
         response.setRisparmioLitri(risparmioLitri);
         response.setRisparmioCosto(risparmioCosto);
         response.setPrezzoCarburanteAlLitro(prezzoAlLitro);
+        response.setTratteNavigatore(navigatoreService.tratte(ottimizzati));
 
         return response;
     }
